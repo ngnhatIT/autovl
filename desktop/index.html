@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>VL Save Studio Desktop</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; background: #10101a; color: #eee; font: 13px/1.45 "Segoe UI", sans-serif; }
+  #root { display: flex; flex-direction: column; height: 100%; }
+  #toolbar { display: flex; gap: 6px; align-items: center; padding: 7px 10px; background: #171724; border-bottom: 1px solid #2c2c44; }
+  #toolbar button { padding: 6px 12px; background: #37474f; color: #fff; border: 0; border-radius: 6px; cursor: pointer; }
+  #toolbar button.primary { background: #2e7d32; font-weight: 700; }
+  #url { flex: 1; color: #9e9eb8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 6px; }
+  #session { color: #9ccc65; font-size: 12px; white-space: nowrap; }
+  #main { display: flex; flex: 1; min-height: 0; }
+  #wv { flex: 1; height: 100%; background: #fff; }
+  #panel { width: 412px; min-width: 412px; height: 100%; overflow-y: auto; background: #171724; border-left: 1px solid #2c2c44; padding: 12px 14px; }
+  #panel h1 { font-size: 15px; margin: 0 0 2px; }
+  .tabs { display: flex; gap: 4px; margin: 10px 0; }
+  .tabs button { flex: 1; padding: 6px 2px; background: #26263a; color: #ddd; border: 1px solid #3a3a55; border-radius: 6px; cursor: pointer; font-size: 12px; }
+  .tabs button.on { background: #2e7d32; color: #fff; border-color: #2e7d32; font-weight: 700; }
+  label { color: #bbb; }
+  input, select { width: 100%; padding: 5px; margin: 2px 0 7px; background: #10101c; color: #eee; border: 1px solid #3a3a55; border-radius: 4px; }
+  input:disabled { opacity: .5; }
+  .row { display: flex; gap: 6px; }
+  .row > * { flex: 1; }
+  button.act { padding: 9px; background: #2e7d32; color: #fff; border: 0; border-radius: 6px; cursor: pointer; font-weight: 700; width: 100%; }
+  button.sec { padding: 9px; background: #37474f; color: #fff; border: 0; border-radius: 6px; cursor: pointer; width: 100%; }
+  button.mini { padding: 4px 9px; background: #444; color: #fff; border: 0; border-radius: 4px; cursor: pointer; font-size: 11px; width: auto; }
+  button.preset { padding: 6px; background: #37474f; color: #fff; border: 0; border-radius: 6px; cursor: pointer; font-size: 12px; }
+  button.preset.gold { background: #4a3f1d; color: #ffd54f; border: 1px solid #6b5c24; }
+  .box { background: #10101c; border: 1px solid #2c2c44; border-radius: 6px; padding: 7px 9px; margin: 6px 0; white-space: pre-wrap; word-break: break-word; }
+  #status { color: #ffd54f; white-space: pre-wrap; margin-top: 8px; }
+  .warn { color: #ef9a9a; font-size: 12px; display: flex; gap: 6px; align-items: center; margin-top: 8px; }
+  .warn input { width: auto; margin: 0; }
+  .slot-card { background: #10101c; border: 1px solid #2c2c44; border-radius: 6px; padding: 7px 9px; margin-bottom: 6px; }
+  #log { white-space: pre-wrap; font-size: 12px; color: #ccc; }
+  .hint { color: #999; font-size: 11px; }
+</style>
+</head>
+<body>
+<div id="root">
+  <div id="toolbar">
+    <button id="nav-main" class="primary">Trang chính</button>
+    <button id="nav-off">Bản offline (nạp save)</button>
+    <button id="nav-reload">Tải lại</button>
+    <div id="url">đang tải game...</div>
+    <div id="session">phiên: ...</div>
+  </div>
+  <div id="main">
+    <webview id="wv" src="https://volamidle.pages.dev/" partition="persist:vlstudio" allowpopups></webview>
+    <div id="panel">
+      <h1>VL SAVE STUDIO — DESKTOP</h1>
+      <div class="hint">Trình duyệt game nằm ngay bên trái: đăng nhập ở đó, mọi thao tác save làm ở panel này. Không cần F12, không extension.</div>
+      <div class="tabs" id="tabs">
+        <button data-tab="edit" class="on">Tạo/Sửa</button>
+        <button data-tab="chest">Mở rương</button>
+        <button data-tab="slots">Slots</button>
+        <button data-tab="check">Kiểm tra</button>
+        <button data-tab="log">Nhật ký</button>
+      </div>
+
+      <div id="tab-edit">
+        <label>Nền save:</label>
+        <select id="base">
+          <option value="tpl-kunlun">Template Côn Luân cấp 138</option>
+          <option value="tpl-vo4">Template Vô Môn Phái cấp 150</option>
+          <option value="cur">Save hiện tại trong máy (slot đang chọn)</option>
+          <option value="file">Chọn file .jxsave...</option>
+        </select>
+        <input type="file" id="base-file" accept=".jxsave,.json,.txt" style="display:none">
+        <div id="form"></div>
+        <label>Nạp vào slot:</label>
+        <select id="target">
+          <option value="cur">Slot đang chọn trong game</option>
+          <option value="0">Slot 1</option>
+          <option value="1">Slot 2</option>
+          <option value="2">Slot 3</option>
+        </select>
+        <div id="checklist" class="box"></div>
+        <div class="row">
+          <button id="apply" class="act">NẠP LUÔN</button>
+          <button id="download" class="sec">Tải file .jxsave</button>
+        </div>
+        <label class="warn"><input type="checkbox" id="override"> Vẫn nạp dù ID khác acc đang đăng nhập (rủi ro bị game gạt)</label>
+        <div id="confirm" class="box" style="display:none;border-color:#2e7d32"></div>
+        <div id="status"></div>
+      </div>
+
+      <div id="tab-chest" style="display:none">
+        <div style="color:#bbb">Tự bấm nút "Dùng ×10" trong popup Rương Ngựa (Hành trang) ở khung game bên trái. Đếm bằng save thật. Chạy ở <b>Trang chính</b>, mở sẵn popup trước khi bấm Bắt đầu.</div>
+        <div id="chest-info" class="box"></div>
+        <label>Số rương muốn mở:</label>
+        <input id="chest-n" type="number" value="9999">
+        <div class="row">
+          <button id="chest-go" class="act">Bắt đầu mở</button>
+          <button id="chest-stop" class="sec" style="background:#8e2828">Dừng</button>
+        </div>
+        <div id="chest-status" style="color:#ffd54f;white-space:pre-wrap;margin-top:8px"></div>
+      </div>
+
+      <div id="tab-slots" style="display:none">
+        <div id="slots"></div>
+        <button id="slots-refresh" class="sec">Làm mới</button>
+      </div>
+
+      <div id="tab-check" style="display:none">
+        <div style="color:#bbb">Kiểm tra tận gốc: đang đăng nhập acc nào, các slot chứa gì và thuộc về ai, ghi save có bị chặn không.</div>
+        <button id="diag-run" class="act" style="margin-top:8px">Chạy kiểm tra</button>
+        <div id="diag-out" class="box"></div>
+      </div>
+
+      <div id="tab-log" style="display:none">
+        <div id="log"></div>
+        <button id="log-clear" class="sec" style="margin-top:6px">Xóa nhật ký</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="templates.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
