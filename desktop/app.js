@@ -143,6 +143,29 @@ function pageRngua() {
     return typeof n === 'number' ? n : -1;
   } catch (x) { return -1; }
 }
+function pageKnb() {
+  try {
+    var keys = ['jxidle', 'jxidle_2', 'jxidle_3'];
+    var s = parseInt(localStorage.getItem('jxidle_slot') || '0', 10);
+    var raw = localStorage.getItem(keys[s] || 'jxidle');
+    if (!raw) return -1;
+    var p = JSON.parse(raw);
+    var e = typeof p.data === 'string' ? JSON.parse(p.data) : p;
+    var pay = JSON.parse(e.d);
+    return typeof pay.knb === 'number' ? pay.knb : -1;
+  } catch (x) { return -1; }
+}
+function pageKnbToday() {
+  var b = document.querySelector('#mBody');
+  if (!b) return -1;
+  var m = (b.textContent || '').match(/Hôm nay đã đổi\s*(\d+)/);
+  return m ? parseInt(m[1], 10) : -1;
+}
+function pageBuyKnb100() {
+  var b = document.querySelector('#mBody [data-ktc100="knb"]:not([disabled])');
+  if (b) { b.click(); return 1; }
+  return 0;
+}
 function pageChestClick() {
   var b = document.querySelector('#miUse10:not([disabled])') || document.querySelector('#ktcRngua10:not([disabled])');
   if (b) { b.click(); return 10; }
@@ -579,6 +602,63 @@ $('chest-go').onclick = function () {
 };
 $('chest-stop').onclick = function () { if (chest.chay) chestStop('Đã dừng theo lệnh.'); };
 
+// ---------- Tab Mua KNB (tự bấm ×100 ở Kỳ Trân Các, đếm bằng KNB thật) ----------
+var knbBuy = { chay: false, clicks: 0, gained: 0 };
+function renderKnbInfo() {
+  exec(pageKnb).then(function (n) {
+    $('knb-info').textContent = 'KNB hiện có: ' + (n >= 0 ? n : 'không đọc được (hãy vào hẳn trong game trước)');
+    exec(pageKnbToday).then(function (t) {
+      if (t >= 0) $('knb-info').textContent += '\nĐã đổi hôm nay: ' + t + ' / 10.000 (đọc từ cửa hàng đang mở)';
+    }).catch(function () {});
+  }).catch(function () {});
+}
+function knbStatus(m) { $('knb-status').textContent = m; }
+function knbStop(msg) {
+  knbBuy.chay = false;
+  exec(pageKnb).then(function (n) {
+    knbStatus(msg + '\nĐã bấm: ' + knbBuy.clicks + ' lần ×100 — KNB +' + knbBuy.gained + (n >= 0 ? ', hiện có ' + n + ' KNB' : ''));
+    log('Mua KNB: ' + msg + ' — ' + knbBuy.clicks + ' lần, +' + knbBuy.gained + ' KNB');
+    renderKnbInfo();
+  });
+}
+async function knbRun(times) {
+  var k0 = await exec(pageKnb);
+  if (k0 < 0) { knbStatus('Không đọc được save — vào hẳn trong game (đã chọn nhân vật) rồi thử lại.'); return; }
+  knbBuy.chay = true; knbBuy.clicks = 0; knbBuy.gained = 0;
+  var thatBai = 0;
+  knbStatus('Đang mua: tối đa ' + times + ' lần ×100, đếm bằng KNB thật...');
+  log('Bắt đầu tự mua KNB ×100: tối đa ' + times + ' lần');
+  while (knbBuy.chay && knbBuy.clicks < times) {
+    var truoc = await exec(pageKnb);
+    var st = await exec(pageBuyKnb100);
+    if (!st) { knbStop('Không thấy nút ×100 khả dụng — mở Kỳ Trân Các ở tab Tiện ích, để nguyên cửa hàng rồi chạy lại. (Nút cũng tự khoá khi đã đổi đủ 10.000 hôm nay.)'); return; }
+    var tang = 0;
+    for (var w = 0; w < 26 && knbBuy.chay; w++) {
+      await sleep(150);
+      var sau = await exec(pageKnb);
+      if (sau >= 0 && sau > truoc) { tang = sau - truoc; break; }
+    }
+    if (!knbBuy.chay) return;
+    if (tang > 0) {
+      knbBuy.clicks++;
+      knbBuy.gained += tang;
+      thatBai = 0;
+      knbStatus('Đã bấm ' + knbBuy.clicks + '/' + times + ' lần — KNB +' + knbBuy.gained + ' (hiện có ' + (truoc + tang) + ')');
+    } else if (++thatBai >= 2) {
+      knbStop('Bấm 2 lần liên tiếp mà KNB không tăng — đã đủ hạn mức 10.000 hôm nay, hoặc hết ngân lượng, hoặc cửa hàng đã đóng.');
+      return;
+    }
+  }
+  if (knbBuy.chay) knbStop('Hoàn tất!');
+}
+$('knb-go').onclick = function () {
+  if (pageState && pageState.offline) { knbStatus('Mua KNB là thao tác trong game — hãy chạy ở Trang chính.'); return; }
+  if (knbBuy.chay) { knbStatus('Đang chạy rồi!'); return; }
+  var v = parseInt($('knb-n').value, 10);
+  knbRun(isNaN(v) || v <= 0 ? 100 : v);
+};
+$('knb-stop').onclick = function () { if (knbBuy.chay) knbStop('Đã dừng theo lệnh.'); };
+
 // ---------- Nhật ký ----------
 function renderLog() {
   var arr = lsGet('vls_log', []);
@@ -590,12 +670,13 @@ $('log-clear').onclick = function () { lsSet('vls_log', []); renderLog(); };
 var activeTab = 'edit';
 function showTab(name) {
   activeTab = name;
-  ['edit', 'chest', 'slots', 'check', 'log'].forEach(function (t) {
+  ['edit', 'chest', 'knb', 'slots', 'check', 'log'].forEach(function (t) {
     $('tab-' + t).style.display = t === name ? 'block' : 'none';
   });
   document.querySelectorAll('#tabs button').forEach(function (b) {
     b.className = b.getAttribute('data-tab') === name ? 'on' : '';
   });
+  if (name === 'knb') renderKnbInfo();
   if (name === 'slots') renderSlots();
   if (name === 'chest') renderChestInfo();
   if (name === 'log') renderLog();

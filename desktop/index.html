@@ -55,6 +55,7 @@
       <div class="tabs" id="tabs">
         <button data-tab="edit" class="on">Tạo/Sửa</button>
         <button data-tab="chest">Mở rương</button>
+        <button data-tab="knb">Mua KNB</button>
         <button data-tab="slots">Slots</button>
         <button data-tab="check">Kiểm tra</button>
         <button data-tab="log">Nhật ký</button>
@@ -97,6 +98,18 @@
           <button id="chest-stop" class="sec" style="background:#8e2828">Dừng</button>
         </div>
         <div id="chest-status" style="color:#ffd54f;white-space:pre-wrap;margin-top:8px"></div>
+      </div>
+
+      <div id="tab-knb" style="display:none">
+        <div style="color:#bbb">Tự bấm nút ×100 trong Kỳ Trân Các (đổi ngân lượng lấy Kim Nguyên Bảo). Đếm bằng KNB thật trong save — bấm hụt là tool biết ngay. Mở sẵn <b>Kỳ Trân Các, tab Tiện ích</b> ở khung game trước khi chạy. Giới hạn của game: 10.000 KNB/ngày/mỗi tài khoản.</div>
+        <div id="knb-info" class="box"></div>
+        <label>Số lần bấm ×100:</label>
+        <input id="knb-n" type="number" value="100">
+        <div class="row">
+          <button id="knb-go" class="act">Bắt đầu mua</button>
+          <button id="knb-stop" class="sec" style="background:#8e2828">Dừng</button>
+        </div>
+        <div id="knb-status" style="color:#ffd54f;white-space:pre-wrap;margin-top:8px"></div>
       </div>
 
       <div id="tab-slots" style="display:none">
