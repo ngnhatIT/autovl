@@ -80,7 +80,7 @@
       <div class="p-head">
         <div class="p-logo">VL</div>
         <div>
-          <div class="p-title">VL SAVE STUDIO<span class="p-ver">v1.5.0</span></div>
+          <div class="p-title">VL SAVE STUDIO<span class="p-ver">v1.6.0</span></div>
           <div class="p-sub">Bản desktop — đăng nhập ở khung game bên trái, thao tác save ở panel này. Không cần F12, không extension.</div>
         </div>
       </div>
@@ -133,10 +133,16 @@
         <select id="base">
           <option value="tpl-kunlun">Mặc định: Phúc Duyên — Côn Luân cấp 49 · XP 99,99%</option>
           <option value="tpl-vo4">Template Vô Môn Phái cấp 49 · XP 99,99%</option>
+          <option value="clean">Nhân vật sạch Vô Môn — tạo mới theo cấp chỉ định</option>
           <option value="cur">Save hiện tại trong máy (slot đang chọn)</option>
           <option value="file">Chọn file .jxsave...</option>
         </select>
         <input type="file" id="base-file" accept=".jxsave,.json,.txt" style="display:none">
+        <div id="clean-row" style="display:none">
+          <label>Cấp muốn tạo (1–200):</label>
+          <input id="clean-lvl" type="number" value="100" min="1" max="200">
+          <div class="hint" style="margin:-4px 0 8px">Nhân vật trắng đúng mẫu game tự tạo: không item, không trang bị, vàng/KNB = 0, màn 1, số giết 0. Điểm tiềm năng = (cấp−1)×5, điểm kỹ năng = cấp×1 — để nguyên chưa cộng, vào game tự cộng.</div>
+        </div>
         <div id="form"></div>
         <label>Nạp vào slot:</label>
         <select id="target">
@@ -179,7 +185,7 @@
       </div>
 
       <div id="toast"></div>
-      <div class="p-foot">VL Save Studio Desktop v1.5.0 — chạy hoàn toàn trên máy bạn</div>
+      <div class="p-foot">VL Save Studio Desktop v1.6.0 — chạy hoàn toàn trên máy bạn</div>
     </div>
   </div>
 </div>

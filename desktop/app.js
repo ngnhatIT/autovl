@@ -380,6 +380,16 @@ function buildForm(pay) {
     buildForm(basePay);
   };
   $('f-netOwner').onchange = renderChecklist;
+  if (baseKind === 'clean') {
+    $('f-lvl').onchange = function () {
+      var L = Math.max(1, Math.min(200, parseInt(this.value, 10) || 1));
+      this.value = L;
+      $('f-attrpts').value = (L - 1) * 5;
+      $('f-skpts').value = L;
+      $('f-xppct').value = 0;
+      renderChecklist();
+    };
+  }
   box.querySelectorAll('.preset').forEach(function (b) { b.onclick = function () { applyPreset(b.getAttribute('data-p')); }; });
   refreshAutoId();
   renderChecklist();
@@ -546,11 +556,41 @@ $('download').onclick = function () {
   } catch (e) { status('Lỗi: ' + (e.message || e)); }
 };
 
+// ---------- Nhân vật sạch Vô Môn theo cấp (khung: template Vô Môn, reset về đúng mẫu factory D6 của game) ----------
+function buildCleanChar(L) {
+  L = Math.max(1, Math.min(200, L | 0));
+  var pay = parseSaveText(window.TEMPLATES.vo4).pay;
+  pay.lvl = L;
+  pay.xp = 0;
+  pay.attrPts = (L - 1) * 5;
+  pay.skPts = L;
+  pay.attr = { str: 0, dex: 0, vit: 0, eng: 0 };
+  pay.gold = 0;
+  pay.knb = 0;
+  pay.inv = [];
+  pay.chest = [];
+  pay.stable = [];
+  pay.eq = {};
+  pay.mats = { ht: {}, ore: {}, shard: {}, misc: {}, dp: {} };
+  pay.sk = {};
+  pay.skL = {};
+  pay.kp = {};
+  pay.kps = 0.2;
+  pay.stage = 1;
+  pay.maxStage = 1;
+  pay.wave = 1;
+  pay.totalKills = 0;
+  return pay;
+}
+var baseKind = '';
+
 // ---------- Bases ----------
 async function loadBase(kind) {
+  baseKind = kind;
   try {
     if (kind === 'tpl-kunlun') basePay = parseSaveText(window.TEMPLATES.kunlun).pay;
     else if (kind === 'tpl-vo4') basePay = parseSaveText(window.TEMPLATES.vo4).pay;
+    else if (kind === 'clean') basePay = buildCleanChar(parseInt(($('clean-lvl') || {}).value, 10) || 100);
     else if (kind === 'cur') {
       if (!pageState) throw new Error('Chưa đọc được trạng thái game.');
       var raw = await exec(pageReadKey, SLOT_KEYS[pageState.slotIdx]);
@@ -568,8 +608,10 @@ async function loadBase(kind) {
 }
 $('base').onchange = function () {
   $('base-file').style.display = this.value === 'file' ? 'block' : 'none';
+  $('clean-row').style.display = this.value === 'clean' ? 'block' : 'none';
   if (this.value !== 'file') loadBase(this.value);
 };
+$('clean-lvl').onchange = function () { if (baseKind === 'clean') loadBase('clean'); };
 $('base-file').onchange = function () {
   var f = this.files && this.files[0];
   if (!f) return;
@@ -748,7 +790,7 @@ $('clear-cache').onclick = async function () {
 };
 $('export-log').onclick = function () {
   var L = [];
-  L.push('VL Save Studio Desktop v1.5.0 — xuất lúc ' + new Date().toLocaleString());
+  L.push('VL Save Studio Desktop v1.6.0 — xuất lúc ' + new Date().toLocaleString());
   if (pageState) {
     L.push('Trang: ' + (pageState.offline ? 'OFFLINE (nạp save)' : 'URL CHÍNH') + ' — ' + pageState.href);
     L.push('Phiên: ' + (pageState.session ? 'đã đăng nhập ...' + pageState.session.id.slice(-6) + ' (ID từ ' + pageState.session.src + ')' : 'chưa đăng nhập'));
