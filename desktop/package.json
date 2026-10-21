@@ -1,6 +1,6 @@
 {
   "name": "vl-studio-desktop",
-  "version": "1.6.0",
+  "version": "2.0.0",
   "description": "VL Save Studio Desktop — tạo/sửa/nạp save Võ Lâm Idle với trình duyệt game tích hợp",
   "main": "main.js",
   "private": true,
