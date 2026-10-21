@@ -1,14 +1,14 @@
 // ==UserScript==
 // @name         VL Save Studio Pro
 // @namespace    vlss-pro
-// @version      3.1
+// @version      3.2
 // @description  Võ Lâm Idle: tạo/sửa/nạp save (template sẵn, preset, sổ tài khoản, quản lý slot + backup) và tự động mở Rương Ngựa đếm bằng save thật.
 // @match        https://volamidle.pages.dev/*
 // @grant        none
 // @run-at       document-idle
 // ==/UserScript==
 //
-// VL SAVE STUDIO PRO v3.1
+// VL SAVE STUDIO PRO v3.2
 // Cài 1 lần trong Tampermonkey -> vào game là có nút "VL Studio".
 // Tab Tạo/Sửa: chọn nền (2 template có sẵn / save hiện tại / file),
 //   sửa tên, ID tài khoản, UID, toàn bộ nguyên liệu, Phúc Duyên Lộ
@@ -312,7 +312,7 @@
   panel.querySelector('#vlss-tab-edit').innerHTML =
     lbl('Nền save') +
     '<select id="vlss-base" style="width:100%;padding:4px;margin:2px 0 8px">' +
-    '<option value="tpl-kunlun">Template Côn Luân cấp 49 · XP 99,99%</option>' +
+    '<option value="tpl-kunlun">Mặc định: Phúc Duyên — Côn Luân cấp 49 · XP 99,99%</option>' +
     '<option value="tpl-vo4">Template Vô Môn Phái cấp 49 · XP 99,99%</option>' +
     '<option value="cur">Save hiện tại trong máy (slot đang chọn)</option>' +
     '<option value="file">Chọn file .jxsave...</option></select>' +
