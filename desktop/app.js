@@ -1,5 +1,5 @@
 'use strict';
-/* VL Save Studio Desktop 2.0.0 — bản rút gọn: chỉ tạo nhân vật Vô Môn cấp 49 · XP 99,99% · 10 tỷ vàng (trơn) + mua KNB.
+/* VL Save Studio Desktop 2.0.1 — bản rút gọn: chỉ tạo nhân vật Vô Môn cấp 49 · XP 99,99% · 10 tỷ vàng (trơn) + mua KNB.
    Chốt an toàn giữ nguyên chạy ngầm: ID lấy từ token phiên, backup trước khi ghi đè, kiểm chứng sau nạp 2 giai đoạn. */
 
 // ---------- Core save ----------
@@ -211,23 +211,41 @@ function verifyPending() {
   var match = slot && !slot.broken && slot.name === pending.name &&
     String(slot.netOwner) === String(pending.netOwner) && (slot.lvl || 0) >= (pending.lvl || 0);
   var stageKey = (match ? 'ok' : 'bad') + ':' + (pageState.offline ? 'off' : 'main') + ':' + pending.stage;
-  if (stageKey === pendingReported) return;
   if (match && pageState.offline && pending.stage === 'written') {
     pending.stage = 'offline-ok'; pending.ts = Date.now(); lsSet('vls_pending', pending);
     pendingReported = stageKey;
     status('Kiểm chứng sau nạp: "' + pending.name + '" cấp ' + pending.lvl + ' ĐÃ GHI DÍNH ở bản offline. Bấm "Trang chính" để game đẩy lên cloud — app sẽ xác nhận nốt.');
     log('Kiểm chứng offline OK: ' + pending.name + ' cấp ' + pending.lvl);
-  } else if (match && !pageState.offline) {
-    var nm = pending.name, lv = pending.lvl;
+    return;
+  }
+  if (match && !pageState.offline) {
+    if (pending.stage !== 'main-check') {
+      pending.stage = 'main-check'; pending.mainOkAt = Date.now(); pending.ts = Date.now(); lsSet('vls_pending', pending);
+      pendingReported = stageKey;
+      status('Kiểm chứng sau nạp: "' + pending.name + '" cấp ' + pending.lvl + ' đã qua URL chính và còn nguyên — đang theo dõi thêm 20 giây cho chắc (server của game kiểm tra khóa tài khoản sau khi trang tải, nhân vật có thể bị reset trong khoảng này)...');
+      log('Kiểm chứng URL chính: còn nguyên, bắt đầu cửa sổ theo dõi 20s cho ' + pending.name);
+      return;
+    }
+    if (Date.now() - (pending.mainOkAt || 0) >= 20000) {
+      var nm = pending.name, lv = pending.lvl;
+      pending = null; lsSet('vls_pending', null); pendingReported = '';
+      status('Kiểm chứng HOÀN TẤT: "' + nm + '" cấp ' + lv + ' giữ ổn định qua URL chính hơn 20 giây — nạp thành công trọn vẹn.');
+      log('Kiểm chứng URL chính OK (ổn định >20s) — nạp hoàn tất: ' + nm + ' cấp ' + lv);
+    }
+    return;
+  }
+  if (!match && slot !== undefined) {
+    var wiped = slot && !slot.broken && slot.name === pending.name && (slot.lvl || 0) < (pending.lvl || 0);
+    var nm3 = pending.name, lv3 = pending.lvl;
     pending = null; lsSet('vls_pending', null); pendingReported = '';
-    status('Kiểm chứng HOÀN TẤT: "' + nm + '" cấp ' + lv + ' vẫn giữ nguyên sau khi qua URL chính — nạp thành công trọn vẹn.');
-    log('Kiểm chứng URL chính OK — nạp hoàn tất: ' + nm + ' cấp ' + lv);
-  } else if (!match && slot !== undefined) {
-    var found = !slot ? 'slot trống' : slot.broken ? 'save không đọc được' : '"' + slot.name + '" cấp ' + slot.lvl + ', chủ ...' + String(slot.netOwner || '?').slice(-6);
-    var nm2 = pending.name, lv2 = pending.lvl;
-    pending = null; lsSet('vls_pending', null); pendingReported = '';
-    status('Kiểm chứng THẤT BẠI: save vừa nạp ("' + nm2 + '" cấp ' + lv2 + ') không còn ở slot đích — hiện tại là ' + found + '. Kiểm tra lại acc đang đăng nhập và slot đích.');
-    log('Kiểm chứng THẤT BẠI cho ' + nm2 + ' — hiện tại: ' + found);
+    if (wiped) {
+      status('Kiểm chứng: save "' + nm3 + '" cấp ' + lv3 + ' ĐÃ BỊ GAME RESET về cấp ' + slot.lvl + ' (tên giữ nguyên). Đây là dấu hiệu tài khoản bị server khóa (ban): game tự wipe nhân vật mỗi khi vào trang chính. Nạp lại cũng sẽ bị tiếp — hãy dùng tài khoản khác hoặc chờ mở khóa.');
+      log('Kiểm chứng: ' + nm3 + ' bị WIPE về cấp ' + slot.lvl + ' — dấu hiệu acc bị khóa phía server');
+    } else {
+      var found = !slot ? 'slot trống' : slot.broken ? 'save không đọc được' : '"' + slot.name + '" cấp ' + slot.lvl + ', chủ ...' + String(slot.netOwner || '?').slice(-6);
+      status('Kiểm chứng THẤT BẠI: save vừa nạp ("' + nm3 + '" cấp ' + lv3 + ') không còn ở slot đích — hiện tại là ' + found + '. Kiểm tra lại acc đang đăng nhập và slot đích.');
+      log('Kiểm chứng THẤT BẠI cho ' + nm3 + ' — hiện tại: ' + found);
+    }
   }
 }
 
@@ -379,4 +397,4 @@ setInterval(refreshState, 6000);
 
 // ---------- Boot ----------
 refreshState();
-console.log('[VL Save Studio Desktop 2.0.0] sẵn sàng');
+console.log('[VL Save Studio Desktop 2.0.1] sẵn sàng');
