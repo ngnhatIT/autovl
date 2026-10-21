@@ -1,5 +1,5 @@
 //
-// VL SAVE STUDIO PRO v3.0
+// VL SAVE STUDIO PRO v3.1
 // Cài 1 lần trong Tampermonkey -> vào game là có nút "VL Studio".
 // Tab Tạo/Sửa: chọn nền (2 template có sẵn / save hiện tại / file),
 //   sửa tên, ID tài khoản, UID, toàn bộ nguyên liệu, Phúc Duyên Lộ
@@ -32,6 +32,10 @@
 
   var SLOT_KEYS = ['jxidle', 'jxidle_2', 'jxidle_3'];
   var MISC_LABELS = { rngua: 'Rương Ngựa', ldt: 'Lệnh Bài Dã Tẩu' };
+  var EXP_TABLE = [100,500,1100,1900,2900,4100,5500,7100,8900,10900,13100,15700,18700,22100,25900,30100,34700,39700,45100,50900,57100,63900,71300,79300,87900,97100,106900,117300,128300,139900,152100,165400,179800,195300,211900,229600,248400,268300,289300,311400,334600,360400,388800,419800,453400,489600,528400,569800,613800,660400,709600,766000,829600,900400,978400,1063600,1156000,1255600,1362400,1476400,1597600,1738200,1898200,2077600,2276400,2494600,2732200,2989200,3265600,3561400,3876600,4240200,4652200,5112600,5621400,6178600,6784200,7438200,8140600,8891400,9690600,10600800,11622000,12754200,13997400,15351600,16816800,18393000,20080200,21878400,23787600,25933000,28314600,30932400,33786400,36876600,40203000,43765600,47564400,50000000,50000000,50000000,50000000,50000000,50000000,50000000,50000000,50000000,50000000,60000000,60000000,60000000,60000000,60000000,60000000,60000000,60000000,60000000,60000000,100000000,100000000,100000000,100000000,100000000,120000000,120000000,120000000,120000000,120000000,160000000,160000000,160000000,160000000,160000000,200000000,200000000,200000000,200000000,200000000,300000000,300000000,300000000,300000000,300000000,500000000,500000000,500000000,500000000,500000000,800000000,800000000,800000000,800000000,800000000,1200000000,1200000000,1200000000,1200000000,1200000000,1800000000,1800000000,1800000000,1800000000,1800000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000];
+  function xpNeed(lvl) { return EXP_TABLE[Math.max(1, Math.min(200, lvl | 0)) - 1] || 0; }
+  function xpPctOf(pay) { var need = xpNeed(pay.lvl || 1); if (!need) return 0; var p = (pay.xp || 0) / need * 100; return Math.round(Math.min(99.99, Math.max(0, p)) * 100) / 100; }
+  function xpFromPct(lvl, pct) { pct = Math.max(0, Math.min(99.99, pct)); return Math.floor(pct / 100 * xpNeed(lvl)); }
 
   // ==CORE-BEGIN==
   function slotKeyOf(i) { return SLOT_KEYS[i] || 'jxidle'; }
@@ -72,6 +76,10 @@
     if (ed.uid != null) pay.uid = ed.uid;
     if (ed.gold != null) pay.gold = ed.gold;
     if (ed.knb != null) pay.knb = ed.knb;
+  if (ed.lvl != null) pay.lvl = ed.lvl;
+  if (ed.xp != null) pay.xp = ed.xp;
+  if (ed.attrPts != null) pay.attrPts = ed.attrPts;
+  if (ed.skPts != null) pay.skPts = ed.skPts;
     if (ed.misc) {
       if (!pay.mats) pay.mats = {};
       if (!pay.mats.misc) pay.mats.misc = {};
@@ -444,6 +452,10 @@
       lbl('UID nhân vật (tự sinh sẵn, bấm nút để đổi)') +
       '<div style="display:flex;gap:6px">' + inp('uid', pay.uid || 0) +
       '<button id="vlss-rand" style="padding:4px 10px;background:#444;color:#fff;border:0;border-radius:4px;cursor:pointer;margin:2px 0 6px">Ngẫu nhiên</button></div>' +
+      lbl('Cấp độ (1-200)') + inp('lvl', pay.lvl || 1) +
+      lbl('% XP trong cấp') + '<input id="vlss-xppct" type="number" step="0.01" value="' + xpPctOf(pay) + '" style="width:100%;padding:4px;margin:2px 0 6px;box-sizing:border-box">' +
+      lbl('Điểm tiềm năng chưa cộng') + inp('attrpts', pay.attrPts || 0) +
+      lbl('Điểm kỹ năng chưa cộng') + inp('skpts', pay.skPts || 0) +
       '<div style="margin:4px 0 2px;color:#bbb">Nguyên liệu:</div>' + miscRows +
       lbl('Phúc Duyên Lộ (Đại)' + (fdl ? '' : ' — nền này không có')) +
       '<input id="vlss-fdl3" type="number" value="' + (fdl ? fdl.ktc.c : 0) + '"' + (fdl ? '' : ' disabled') + ' style="width:100%;padding:4px;margin:2px 0 6px;box-sizing:border-box">' +
@@ -543,12 +555,20 @@
       misc[row.getAttribute('data-misc')] = isNaN(v) ? 0 : v;
     });
     var f = panel.querySelector('#vlss-fdl3');
+    var lvlEl = panel.querySelector('#vlss-lvl');
+    var lvl = lvlEl ? Math.max(1, Math.min(200, num('#vlss-lvl') || 1)) : null;
+    var pctEl = panel.querySelector('#vlss-xppct');
+    var pct = pctEl ? parseFloat(pctEl.value) : 0;
+    if (isNaN(pct)) pct = 0;
     return {
       name: panel.querySelector('#vlss-name').value.trim(),
       netOwner: panel.querySelector('#vlss-netOwner').value.trim(),
       uid: num('#vlss-uid'),
       gold: num('#vlss-gold'),
       knb: num('#vlss-knb'),
+      lvl: lvl, xp: lvl != null ? xpFromPct(lvl, pct) : null,
+      attrPts: panel.querySelector('#vlss-attrpts') ? num('#vlss-attrpts') : null,
+      skPts: panel.querySelector('#vlss-skpts') ? num('#vlss-skpts') : null,
       fdl3: f && !f.disabled ? num('#vlss-fdl3') : null,
       misc: misc
     };

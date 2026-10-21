@@ -32,6 +32,10 @@ function applyEdits(pay, ed) {
   if (ed.uid != null) pay.uid = ed.uid;
   if (ed.gold != null) pay.gold = ed.gold;
   if (ed.knb != null) pay.knb = ed.knb;
+  if (ed.lvl != null) pay.lvl = ed.lvl;
+  if (ed.xp != null) pay.xp = ed.xp;
+  if (ed.attrPts != null) pay.attrPts = ed.attrPts;
+  if (ed.skPts != null) pay.skPts = ed.skPts;
   if (ed.misc) {
     if (!pay.mats) pay.mats = {};
     if (!pay.mats.misc) pay.mats.misc = {};
@@ -56,6 +60,10 @@ function finalize(pay) {
 }
 var SLOT_KEYS = ['jxidle', 'jxidle_2', 'jxidle_3'];
 var MISC_LABELS = { rngua: 'Rương Ngựa', ldt: 'Lệnh Bài Dã Tẩu' };
+var EXP_TABLE = [100,500,1100,1900,2900,4100,5500,7100,8900,10900,13100,15700,18700,22100,25900,30100,34700,39700,45100,50900,57100,63900,71300,79300,87900,97100,106900,117300,128300,139900,152100,165400,179800,195300,211900,229600,248400,268300,289300,311400,334600,360400,388800,419800,453400,489600,528400,569800,613800,660400,709600,766000,829600,900400,978400,1063600,1156000,1255600,1362400,1476400,1597600,1738200,1898200,2077600,2276400,2494600,2732200,2989200,3265600,3561400,3876600,4240200,4652200,5112600,5621400,6178600,6784200,7438200,8140600,8891400,9690600,10600800,11622000,12754200,13997400,15351600,16816800,18393000,20080200,21878400,23787600,25933000,28314600,30932400,33786400,36876600,40203000,43765600,47564400,50000000,50000000,50000000,50000000,50000000,50000000,50000000,50000000,50000000,50000000,60000000,60000000,60000000,60000000,60000000,60000000,60000000,60000000,60000000,60000000,100000000,100000000,100000000,100000000,100000000,120000000,120000000,120000000,120000000,120000000,160000000,160000000,160000000,160000000,160000000,200000000,200000000,200000000,200000000,200000000,300000000,300000000,300000000,300000000,300000000,500000000,500000000,500000000,500000000,500000000,800000000,800000000,800000000,800000000,800000000,1200000000,1200000000,1200000000,1200000000,1200000000,1800000000,1800000000,1800000000,1800000000,1800000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000,2000000000];
+function xpNeed(lvl) { return EXP_TABLE[Math.max(1, Math.min(200, lvl | 0)) - 1] || 0; }
+function xpPctOf(pay) { var need = xpNeed(pay.lvl || 1); if (!need) return 0; var p = (pay.xp || 0) / need * 100; return Math.round(Math.min(99.99, Math.max(0, p)) * 100) / 100; }
+function xpFromPct(lvl, pct) { pct = Math.max(0, Math.min(99.99, pct)); return Math.floor(pct / 100 * xpNeed(lvl)); }
 
 // ---------- Snippet chạy BÊN TRONG trang game (tự chứa, không closure) ----------
 function pageReadState() {
@@ -214,6 +222,8 @@ function renderSession() {
     ? 'phiên: ...' + pageState.session.id.slice(-6) + ' | ' + (pageState.offline ? 'OFFLINE' : 'URL CHÍNH')
     : 'phiên: chưa đăng nhập | ' + (pageState.offline ? 'OFFLINE' : 'URL CHÍNH');
   $('url').textContent = pageState.href;
+  var cur = pageState.slots[pageState.slotIdx];
+  if (cur && !cur.broken) el.textContent += ' | ' + cur.name + ' cấp ' + cur.lvl + (cur.rngua != null ? ' · ' + cur.rngua + ' rương' : '');
 }
 
 // ---------- Kiểm chứng sau nạp ----------
@@ -267,6 +277,10 @@ function buildForm(pay) {
     '<button id="f-acc-save" class="mini">Lưu ID này</button></div>' +
     '<div id="f-autoid" style="font-size:12px;color:#9ccc65;margin:-2px 0 7px"></div>' +
     '<label>UID nhân vật:</label><div class="row"><input id="f-uid" type="number" value="' + (pay.uid || 0) + '"><button id="f-rand" class="mini">Ngẫu nhiên</button></div>' +
+    '<div class="row"><div><label>Cấp độ (1-200):</label><input id="f-lvl" type="number" value="' + (pay.lvl || 1) + '"></div>' +
+    '<div><label>% XP trong cấp:</label><input id="f-xppct" type="number" step="0.01" value="' + xpPctOf(pay) + '"></div></div>' +
+    '<div class="row"><div><label>Điểm tiềm năng:</label><input id="f-attrpts" type="number" value="' + (pay.attrPts || 0) + '"></div>' +
+    '<div><label>Điểm kỹ năng:</label><input id="f-skpts" type="number" value="' + (pay.skPts || 0) + '"></div></div>' +
     '<div style="margin:4px 0 2px;color:#bbb">Nguyên liệu:</div>' + miscRows +
     '<label>Phúc Duyên Lộ (Đại)' + (fdl ? '' : ' — nền này không có') + ':</label>' +
     '<input id="f-fdl3" type="number" value="' + (fdl ? fdl.ktc.c : 0) + '"' + (fdl ? '' : ' disabled') + '>' +
@@ -346,10 +360,17 @@ function readEdits() {
     misc[row.getAttribute('data-misc')] = isNaN(v) ? 0 : v;
   });
   var f = $('f-fdl3');
+  var lvlEl = $('f-lvl');
+  var lvl = lvlEl ? Math.max(1, Math.min(200, num('f-lvl') || 1)) : null;
+  var pct = parseFloat($('f-xppct') ? $('f-xppct').value : '0');
+  if (isNaN(pct)) pct = 0;
   return {
     name: $('f-name').value.trim(),
     netOwner: $('f-netOwner').value.trim(),
     uid: num('f-uid'), gold: num('f-gold'), knb: num('f-knb'),
+    lvl: lvl, xp: lvl != null ? xpFromPct(lvl, pct) : null,
+    attrPts: $('f-attrpts') ? num('f-attrpts') : null,
+    skPts: $('f-skpts') ? num('f-skpts') : null,
     fdl3: f && !f.disabled ? num('f-fdl3') : null,
     misc: misc
   };
@@ -501,8 +522,26 @@ function renderSlots() {
     var info = '(trống)';
     if (s) info = s.broken ? '(save không đọc được)' : '<b>' + s.name + '</b> — cấp ' + s.lvl + ' | Rương Ngựa: ' + (s.rngua == null ? '?' : s.rngua) + ' | chủ ...' + String(s.netOwner || '?').slice(-6);
     return '<div class="slot-card">Slot ' + (i + 1) + ' (' + SLOT_KEYS[i] + '): ' + info +
-      (s && s.hasBak ? '<br><button class="mini" data-restore="' + i + '" style="margin-top:5px;background:#6d4c00;color:#ffd54f">Khôi phục bản backup</button>' : '') + '</div>';
+      (s && !s.broken ? '<br><button class="mini" data-dl="' + i + '" style="margin-top:5px">Xuất file .jxsave</button>' : '') +
+      (s && s.hasBak ? '<button class="mini" data-restore="' + i + '" style="margin-top:5px;margin-left:5px;background:#6d4c00;color:#ffd54f">Khôi phục bản backup</button>' : '') + '</div>';
   }).join('');
+  box.querySelectorAll('[data-dl]').forEach(function (b) {
+    b.onclick = async function () {
+      var i = parseInt(b.getAttribute('data-dl'), 10);
+      var raw = await exec(pageReadKey, SLOT_KEYS[i]);
+      if (!raw) return;
+      try {
+        var parsed = parseSaveText(raw);
+        var outer = JSON.stringify({ game: 'jxidle', v: 1, exported: Date.now(), fac: parsed.pay.fac, lvl: parsed.pay.lvl, data: raw });
+        var a2 = document.createElement('a');
+        a2.href = URL.createObjectURL(new Blob([outer], { type: 'application/octet-stream' }));
+        a2.download = 'jxidle_' + String(parsed.pay.name).replace(/[^a-zA-Z0-9_]/g, '_') + '_slot' + (i + 1) + '.jxsave';
+        a2.click();
+        setTimeout(function () { URL.revokeObjectURL(a2.href); }, 4000);
+        log('Xuất file slot ' + (i + 1) + ': ' + parsed.pay.name + ' cấp ' + parsed.pay.lvl);
+      } catch (e) { alert('Slot này không đọc được để xuất.'); }
+    };
+  });
   box.querySelectorAll('[data-restore]').forEach(function (b) {
     b.onclick = async function () {
       var i = parseInt(b.getAttribute('data-restore'), 10);
