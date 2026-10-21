@@ -304,8 +304,8 @@
   panel.querySelector('#vlss-tab-edit').innerHTML =
     lbl('Nền save') +
     '<select id="vlss-base" style="width:100%;padding:4px;margin:2px 0 8px">' +
-    '<option value="tpl-kunlun">Template Côn Luân cấp 138</option>' +
-    '<option value="tpl-vo4">Template Vô Môn Phái cấp 150</option>' +
+    '<option value="tpl-kunlun">Template Côn Luân cấp 49 · XP 99,99%</option>' +
+    '<option value="tpl-vo4">Template Vô Môn Phái cấp 49 · XP 99,99%</option>' +
     '<option value="cur">Save hiện tại trong máy (slot đang chọn)</option>' +
     '<option value="file">Chọn file .jxsave...</option></select>' +
     '<input type="file" id="vlss-file" accept=".jxsave,.json,.txt" style="display:none;width:100%;margin-bottom:6px">' +
