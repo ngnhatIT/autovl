@@ -4,38 +4,66 @@
 <meta charset="utf-8">
 <title>VL Save Studio Desktop</title>
 <style>
+  :root {
+    --bg: #0b0e14; --panel: #10141d; --card: #161c28; --card2: #1b2333;
+    --border: #232c3d; --text: #e6eaf2; --muted: #8b94a7; --faint: #5d6677;
+    --accent: #35c759; --accent-d: #1f9d4d; --gold: #f5c542; --red: #e5534b; --amber: #ffd54f;
+  }
   * { box-sizing: border-box; }
-  html, body { height: 100%; margin: 0; background: #10101a; color: #eee; font: 13px/1.45 "Segoe UI", sans-serif; }
+  html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text); font: 13px/1.5 "Segoe UI", system-ui, sans-serif; }
   #root { display: flex; flex-direction: column; height: 100%; }
-  #toolbar { display: flex; gap: 6px; align-items: center; padding: 7px 10px; background: #171724; border-bottom: 1px solid #2c2c44; }
-  #toolbar button { padding: 6px 12px; background: #37474f; color: #fff; border: 0; border-radius: 6px; cursor: pointer; }
-  #toolbar button.primary { background: #2e7d32; font-weight: 700; }
-  #url { flex: 1; color: #9e9eb8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 6px; }
+  #toolbar { display: flex; gap: 6px; align-items: center; padding: 7px 10px; background: #0e1219; border-bottom: 1px solid var(--border); }
+  #toolbar button { padding: 6px 12px; background: var(--card2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; transition: background .15s, border-color .15s; }
+  #toolbar button:hover { background: #232d42; }
+  #toolbar button.primary { background: var(--accent-d); border-color: var(--accent-d); font-weight: 700; color: #fff; }
+  #toolbar button.primary:hover { background: var(--accent); }
+  #url { flex: 1; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 6px; font-size: 12px; }
   #session { color: #9ccc65; font-size: 12px; white-space: nowrap; }
   #main { display: flex; flex: 1; min-height: 0; }
   #wv { flex: 1; height: 100%; background: #fff; }
-  #panel { width: 412px; min-width: 412px; height: 100%; overflow-y: auto; background: #171724; border-left: 1px solid #2c2c44; padding: 12px 14px; }
-  #panel h1 { font-size: 15px; margin: 0 0 2px; }
-  .tabs { display: flex; gap: 4px; margin: 10px 0; }
-  .tabs button { flex: 1; padding: 6px 2px; background: #26263a; color: #ddd; border: 1px solid #3a3a55; border-radius: 6px; cursor: pointer; font-size: 12px; }
-  .tabs button.on { background: #2e7d32; color: #fff; border-color: #2e7d32; font-weight: 700; }
-  label { color: #bbb; }
-  input, select { width: 100%; padding: 5px; margin: 2px 0 7px; background: #10101c; color: #eee; border: 1px solid #3a3a55; border-radius: 4px; }
+  #panel { width: 420px; min-width: 420px; height: 100%; overflow-y: auto; background: var(--panel); border-left: 1px solid var(--border); padding: 14px 16px 20px; position: relative; }
+  #panel::-webkit-scrollbar { width: 9px; }
+  #panel::-webkit-scrollbar-thumb { background: #2a3448; border-radius: 5px; }
+  #panel::-webkit-scrollbar-track { background: transparent; }
+  .p-head { display: flex; gap: 10px; align-items: center; }
+  .p-logo { width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, #b8860b, #f5c542); color: #231a00; font-weight: 800; font-size: 15px; display: flex; align-items: center; justify-content: center; letter-spacing: .5px; box-shadow: 0 2px 10px rgba(245,197,66,.25); flex: none; }
+  .p-title { font-size: 15px; font-weight: 700; letter-spacing: .4px; }
+  .p-ver { font-size: 10px; font-weight: 700; color: #0b0e14; background: var(--gold); border-radius: 8px; padding: 1px 7px; margin-left: 6px; vertical-align: 2px; }
+  .p-sub { color: var(--muted); font-size: 12px; margin-top: 1px; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 12px 0; }
+  .tabs button { flex: 1 1 22%; padding: 6px 2px; background: var(--card); color: #c6cdd9; border: 1px solid var(--border); border-radius: 7px; cursor: pointer; font-size: 12px; transition: background .15s, color .15s, border-color .15s; }
+  .tabs button:hover { background: var(--card2); color: #fff; }
+  .tabs button.on { background: var(--accent-d); color: #fff; border-color: var(--accent-d); font-weight: 700; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px; margin: 8px 0; }
+  .desc { color: var(--muted); font-size: 12.5px; }
+  label { color: #aeb8c8; font-size: 12.5px; }
+  input, select { width: 100%; padding: 6px 8px; margin: 2px 0 8px; background: #0d1119; color: var(--text); border: 1px solid var(--border); border-radius: 6px; outline: none; transition: border-color .15s, box-shadow .15s; }
+  input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(53,199,89,.18); }
   input:disabled { opacity: .5; }
   .row { display: flex; gap: 6px; }
   .row > * { flex: 1; }
-  button.act { padding: 9px; background: #2e7d32; color: #fff; border: 0; border-radius: 6px; cursor: pointer; font-weight: 700; width: 100%; }
-  button.sec { padding: 9px; background: #37474f; color: #fff; border: 0; border-radius: 6px; cursor: pointer; width: 100%; }
-  button.mini { padding: 4px 9px; background: #444; color: #fff; border: 0; border-radius: 4px; cursor: pointer; font-size: 11px; width: auto; }
-  button.preset { padding: 6px; background: #37474f; color: #fff; border: 0; border-radius: 6px; cursor: pointer; font-size: 12px; }
-  button.preset.gold { background: #4a3f1d; color: #ffd54f; border: 1px solid #6b5c24; }
-  .box { background: #10101c; border: 1px solid #2c2c44; border-radius: 6px; padding: 7px 9px; margin: 6px 0; white-space: pre-wrap; word-break: break-word; }
-  #status { color: #ffd54f; white-space: pre-wrap; margin-top: 8px; }
+  button.act { padding: 9px; background: linear-gradient(180deg, var(--accent), var(--accent-d)); color: #fff; border: 0; border-radius: 7px; cursor: pointer; font-weight: 700; width: 100%; transition: filter .15s; }
+  button.act:hover { filter: brightness(1.1); }
+  button.sec { padding: 9px; background: var(--card2); color: var(--text); border: 1px solid var(--border); border-radius: 7px; cursor: pointer; width: 100%; transition: background .15s; }
+  button.sec:hover { background: #232d42; }
+  button.mini { padding: 4px 10px; background: #2a3448; color: #dbe2ee; border: 1px solid var(--border); border-radius: 5px; cursor: pointer; font-size: 11px; width: auto; transition: background .15s; }
+  button.mini:hover { background: #35425c; }
+  button.preset { padding: 6px; background: var(--card2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 12px; }
+  button.preset.gold { background: #4a3f1d; color: var(--gold); border: 1px solid #6b5c24; }
+  .box { background: #0d1119; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin: 6px 0; white-space: pre-wrap; word-break: break-word; }
+  #status { color: var(--amber); white-space: pre-wrap; margin-top: 8px; }
   .warn { color: #ef9a9a; font-size: 12px; display: flex; gap: 6px; align-items: center; margin-top: 8px; }
   .warn input { width: auto; margin: 0; }
-  .slot-card { background: #10101c; border: 1px solid #2c2c44; border-radius: 6px; padding: 7px 9px; margin-bottom: 6px; }
-  #log { white-space: pre-wrap; font-size: 12px; color: #ccc; }
-  .hint { color: #999; font-size: 11px; }
+  .slot-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; margin-bottom: 7px; }
+  .quick { display: flex; gap: 6px; margin-top: 8px; }
+  .quick button { flex: 1; }
+  #log { white-space: pre-wrap; font-size: 12px; color: #c6cdd9; }
+  .hint { color: var(--muted); font-size: 11px; }
+  .help h3 { margin: 12px 0 4px; font-size: 13px; color: var(--gold); }
+  .help p, .help li { color: #c6cdd9; font-size: 12.5px; }
+  .help ol { padding-left: 18px; margin: 4px 0; }
+  #toast { position: sticky; bottom: 10px; margin: 10px auto 0; width: fit-content; max-width: 100%; word-break: break-word; background: #1d2b1d; color: #c8e6c9; border: 1px solid var(--accent-d); padding: 8px 14px; border-radius: 8px; font-size: 12.5px; opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; text-align: center; margin-top: 10px; box-shadow: 0 6px 18px rgba(0,0,0,.45); z-index: 5; }
+  .p-foot { color: #525d72; font-size: 11px; text-align: center; margin-top: 14px; }
 </style>
 </head>
 <body>
@@ -50,18 +78,37 @@
   <div id="main">
     <webview id="wv" src="https://volamidle.pages.dev/" partition="persist:vlstudio" allowpopups></webview>
     <div id="panel">
-      <h1>VL SAVE STUDIO — DESKTOP</h1>
-      <div class="hint">Trình duyệt game nằm ngay bên trái: đăng nhập ở đó, mọi thao tác save làm ở panel này. Không cần F12, không extension.</div>
+      <div class="p-head">
+        <div class="p-logo">VL</div>
+        <div>
+          <div class="p-title">VL SAVE STUDIO<span class="p-ver">v1.3.0</span></div>
+          <div class="p-sub">Bản desktop — đăng nhập ở khung game bên trái, thao tác save ở panel này. Không cần F12, không extension.</div>
+        </div>
+      </div>
       <div class="tabs" id="tabs">
-        <button data-tab="edit" class="on">Tạo/Sửa</button>
+        <button data-tab="home" class="on">Tổng quan</button>
+        <button data-tab="edit">Tạo/Sửa</button>
         <button data-tab="chest">Mở rương</button>
         <button data-tab="knb">Mua KNB</button>
         <button data-tab="slots">Slots</button>
         <button data-tab="check">Kiểm tra</button>
         <button data-tab="log">Nhật ký</button>
+        <button data-tab="help">Trợ giúp</button>
       </div>
 
-      <div id="tab-edit">
+      <div id="tab-home">
+        <div id="home-session" class="card">Đang đọc trạng thái game...</div>
+        <div id="home-slots"></div>
+        <div class="quick">
+          <button class="mini" data-goto="edit">Nạp save</button>
+          <button class="mini" data-goto="chest">Mở rương</button>
+          <button class="mini" data-goto="knb">Mua KNB</button>
+          <button class="mini" data-goto="slots">Bản lưu</button>
+        </div>
+        <div class="p-foot">Mọi thao tác đều được kiểm chứng bằng save thật sau khi thực hiện.</div>
+      </div>
+
+      <div id="tab-edit" style="display:none">
         <label>Nền save:</label>
         <select id="base">
           <option value="tpl-kunlun">Mặc định: Phúc Duyên — Côn Luân cấp 49 · XP 99,99%</option>
@@ -89,7 +136,7 @@
       </div>
 
       <div id="tab-chest" style="display:none">
-        <div style="color:#bbb">Tự bấm nút "Dùng ×10" trong popup Rương Ngựa (Hành trang) ở khung game bên trái. Đếm bằng save thật. Chạy ở <b>Trang chính</b>, mở sẵn popup trước khi bấm Bắt đầu.</div>
+        <div class="desc">Tự bấm nút "Dùng ×10" trong popup Rương Ngựa (Hành trang) ở khung game bên trái. Đếm bằng save thật. Chạy ở <b>Trang chính</b>, mở sẵn popup trước khi bấm Bắt đầu.</div>
         <div id="chest-info" class="box"></div>
         <label>Số rương muốn mở:</label>
         <input id="chest-n" type="number" value="9999">
@@ -101,7 +148,7 @@
       </div>
 
       <div id="tab-knb" style="display:none">
-        <div style="color:#bbb">Tự bấm nút ×100 trong Kỳ Trân Các (đổi ngân lượng lấy Kim Nguyên Bảo). Đếm bằng KNB thật trong save — bấm hụt là tool biết ngay. Mở sẵn <b>Kỳ Trân Các, tab Tiện ích</b> ở khung game trước khi chạy. Giới hạn của game: 10.000 KNB/ngày/mỗi tài khoản.</div>
+        <div class="desc">Tự bấm nút ×100 trong Kỳ Trân Các (đổi ngân lượng lấy Kim Nguyên Bảo). Đếm bằng KNB thật trong save — bấm hụt là tool biết ngay. Mở sẵn <b>Kỳ Trân Các, tab Tiện ích</b> ở khung game trước khi chạy. Giới hạn của game: 10.000 KNB/ngày/mỗi tài khoản.</div>
         <div id="knb-info" class="box"></div>
         <label>Số lần bấm ×100:</label>
         <input id="knb-n" type="number" value="100">
@@ -115,10 +162,15 @@
       <div id="tab-slots" style="display:none">
         <div id="slots"></div>
         <button id="slots-refresh" class="sec">Làm mới</button>
+        <div class="card" style="margin-top:10px">
+          <div style="font-weight:700;margin-bottom:4px">Bản lưu có tên (tối đa 5 bản/slot)</div>
+          <div class="desc">Chụp lại save của một slot để dành — khôi phục được về đúng slot đó bất cứ lúc nào. Khác với bản backup tự động khi nạp (chỉ giữ 1 bản gần nhất).</div>
+          <div id="backups" style="margin-top:6px"></div>
+        </div>
       </div>
 
       <div id="tab-check" style="display:none">
-        <div style="color:#bbb">Kiểm tra tận gốc: đang đăng nhập acc nào, các slot chứa gì và thuộc về ai, ghi save có bị chặn không.</div>
+        <div class="desc">Kiểm tra tận gốc: đang đăng nhập acc nào, các slot chứa gì và thuộc về ai, ghi save có bị chặn không.</div>
         <button id="diag-run" class="act" style="margin-top:8px">Chạy kiểm tra</button>
         <div id="diag-out" class="box"></div>
       </div>
@@ -127,6 +179,27 @@
         <div id="log"></div>
         <button id="log-clear" class="sec" style="margin-top:6px">Xóa nhật ký</button>
       </div>
+
+      <div id="tab-help" style="display:none" class="help">
+        <h3>Nạp save trong 4 bước</h3>
+        <ol>
+          <li>Đăng nhập đúng tài khoản ở khung game bên trái.</li>
+          <li>Bấm <b>Bản offline (nạp save)</b> trên thanh công cụ trên cùng.</li>
+          <li>Sang tab <b>Tạo/Sửa</b>: chọn nền, chỉnh số liệu, bấm <b>NẠP LUÔN</b> và xác nhận bảng xem trước.</li>
+          <li>Bấm <b>Trang chính</b> và chờ dòng "Kiểm chứng HOÀN TẤT" — nghĩa là save đã qua được vòng kiểm tra của game.</li>
+        </ol>
+        <h3>Vì sao tool chặn nạp?</h3>
+        <p>Nếu ID tài khoản trong save khác tài khoản đang đăng nhập, game sẽ gạt save ngay khi vào bản chính. Tool chặn trước để bạn khỏi mất công — hãy bấm nút "Tự lấy ID acc" trong form cho khớp, đừng tích ô nạp bất chấp trừ khi bạn hiểu rõ mình đang làm gì.</p>
+        <h3>Tự động hoá</h3>
+        <p>Tab <b>Mở rương</b> và <b>Mua KNB</b> bấm thay bạn qua các nút thật của game và đếm kết quả bằng save thật sau mỗi cú bấm — số không nhúc nhích là tool dừng và báo lý do, không bấm mù.</p>
+        <h3>Bản lưu có tên</h3>
+        <p>Tab <b>Slots</b> → "Tạo bản lưu" để chụp lại trạng thái hiện tại của một slot (tối đa 5 bản/slot). Trước mỗi lần thử nghiệm save lạ, tạo một bản lưu để luôn có đường quay lại.</p>
+        <h3>Nguyên tắc an toàn</h3>
+        <p>Tool chạy hoàn toàn trên máy của bạn và thao tác qua giao diện thật của game. Các loại tiền do máy chủ quản lý (như Điểm Phúc Duyên) không sửa bằng file được — nạp vào cũng bị máy chủ ghi đè khi đồng bộ.</p>
+      </div>
+
+      <div id="toast"></div>
+      <div class="p-foot">VL Save Studio Desktop v1.3.0 — chạy hoàn toàn trên máy bạn</div>
     </div>
   </div>
 </div>

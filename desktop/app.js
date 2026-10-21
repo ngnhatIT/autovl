@@ -174,6 +174,30 @@ function pageBuyKnb100() {
   if (b) { b.click(); return 1; }
   return 0;
 }
+function pageBackupList() {
+  var out = [];
+  for (var i = 0; i < localStorage.length; i++) {
+    var k = localStorage.key(i);
+    if (!/^jxidle(_2|_3)?_bak_\d+$/.test(k)) continue;
+    var name = '?', lvl = '?';
+    try { var p = JSON.parse(localStorage.getItem(k)); var e = typeof p.data === 'string' ? JSON.parse(p.data) : p; var pay = JSON.parse(e.d); name = pay.name; lvl = pay.lvl; } catch (x) {}
+    out.push({ key: k, ts: parseInt(k.split('_bak_')[1], 10), name: name, lvl: lvl });
+  }
+  out.sort(function (x, y) { return y.ts - x.ts; });
+  return JSON.stringify(out);
+}
+function pageCreateBackup(slotKey) {
+  var raw = localStorage.getItem(slotKey);
+  if (!raw) return '';
+  var bk = slotKey + '_bak_' + Date.now();
+  try { localStorage.setItem(bk, raw); } catch (e) { return ''; }
+  var mine = [];
+  for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k && k.indexOf(slotKey + '_bak_') === 0) mine.push(k); }
+  mine.sort();
+  while (mine.length > 5) { localStorage.removeItem(mine.shift()); }
+  return bk;
+}
+function pageDeleteKey(k) { localStorage.removeItem(k); return 1; }
 function pageChestClick() {
   var b = document.querySelector('#miUse10:not([disabled])') || document.querySelector('#ktcRngua10:not([disabled])');
   if (b) { b.click(); return 10; }
@@ -198,6 +222,16 @@ function log(msg) {
   if (arr.length > 100) arr.length = 100;
   lsSet('vls_log', arr);
   renderLog();
+  toast(msg);
+}
+var toastTimer = null;
+function toast(msg) {
+  var t = $('toast');
+  if (!t) return;
+  t.textContent = msg.length > 110 ? msg.slice(0, 110) + '…' : msg;
+  t.style.opacity = '1';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () { t.style.opacity = '0'; }, 3400);
 }
 function status(msg) { $('status').textContent = msg; }
 
@@ -211,6 +245,7 @@ async function refreshState() {
   renderSession();
   refreshAutoId();
   renderChecklist();
+  if (activeTab === 'home') renderHome();
   if (activeTab === 'slots') renderSlots();
   if (activeTab === 'chest') renderChestInfo();
   verifyPending();
@@ -224,6 +259,7 @@ function renderSession() {
   $('url').textContent = pageState.href;
   var cur = pageState.slots[pageState.slotIdx];
   if (cur && !cur.broken) el.textContent += ' | ' + cur.name + ' cấp ' + cur.lvl + (cur.rngua != null ? ' · ' + cur.rngua + ' rương' : '');
+  if (activeTab === 'home') renderHome();
 }
 
 // ---------- Kiểm chứng sau nạp ----------
@@ -522,7 +558,7 @@ function renderSlots() {
     var info = '(trống)';
     if (s) info = s.broken ? '(save không đọc được)' : '<b>' + s.name + '</b> — cấp ' + s.lvl + ' | Rương Ngựa: ' + (s.rngua == null ? '?' : s.rngua) + ' | chủ ...' + String(s.netOwner || '?').slice(-6);
     return '<div class="slot-card">Slot ' + (i + 1) + ' (' + SLOT_KEYS[i] + '): ' + info +
-      (s && !s.broken ? '<br><button class="mini" data-dl="' + i + '" style="margin-top:5px">Xuất file .jxsave</button>' : '') +
+      (s && !s.broken ? '<br><button class="mini" data-dl="' + i + '" style="margin-top:5px">Xuất file .jxsave</button><button class="mini" data-baknew="' + i + '" style="margin-top:5px;margin-left:5px">Tạo bản lưu</button>' : '') +
       (s && s.hasBak ? '<button class="mini" data-restore="' + i + '" style="margin-top:5px;margin-left:5px;background:#6d4c00;color:#ffd54f">Khôi phục bản backup</button>' : '') + '</div>';
   }).join('');
   box.querySelectorAll('[data-dl]').forEach(function (b) {
@@ -557,8 +593,77 @@ function renderSlots() {
       } else alert('Ghi thất bại.');
     };
   });
+  box.querySelectorAll('[data-baknew]').forEach(function (b) {
+    b.onclick = async function () {
+      var i = parseInt(b.getAttribute('data-baknew'), 10);
+      var k = await exec(pageCreateBackup, SLOT_KEYS[i]);
+      if (k) { log('Tạo bản lưu ' + k); renderBackups(); }
+      else alert('Không tạo được bản lưu (slot trống?).');
+    };
+  });
+  renderBackups();
 }
 $('slots-refresh').onclick = refreshState;
+
+// ---------- Bản lưu có tên + Dashboard ----------
+function renderBackups() {
+  var box = $('backups');
+  if (!box) return;
+  exec(pageBackupList).then(function (json) {
+    var arr = [];
+    try { arr = JSON.parse(json || '[]'); } catch (e) {}
+    if (!arr.length) { box.innerHTML = '<div class="desc">(chưa có bản lưu nào — bấm "Tạo bản lưu" ở thẻ slot phía trên)</div>'; return; }
+    box.innerHTML = arr.map(function (b) {
+      var slotIdx = b.key.indexOf('jxidle_3') === 0 ? 3 : b.key.indexOf('jxidle_2') === 0 ? 2 : 1;
+      var when = new Date(b.ts).toLocaleString();
+      return '<div class="slot-card">Slot ' + slotIdx + ' — <b>' + b.name + '</b> cấp ' + b.lvl + '<br><span style="color:#8b94a7">' + when + '</span><br>' +
+        '<button class="mini" data-bak-restore="' + b.key + '" style="margin-top:5px">Khôi phục vào slot ' + slotIdx + '</button>' +
+        '<button class="mini" data-bak-del="' + b.key + '" style="margin-top:5px;margin-left:5px;background:#5c2626">Xoá</button></div>';
+    }).join('');
+    box.querySelectorAll('[data-bak-restore]').forEach(function (btn) {
+      btn.onclick = function () { restoreBackupKey(btn.getAttribute('data-bak-restore')); };
+    });
+    box.querySelectorAll('[data-bak-del]').forEach(function (btn) {
+      btn.onclick = async function () {
+        if (!confirm('Xoá bản lưu này?')) return;
+        await exec(pageDeleteKey, btn.getAttribute('data-bak-del'));
+        log('Đã xoá bản lưu ' + btn.getAttribute('data-bak-del'));
+        renderBackups();
+      };
+    });
+  }).catch(function () {});
+}
+async function restoreBackupKey(bkKey) {
+  if (!pageState || !pageState.offline) { alert('Khôi phục nên làm ở bản offline — bấm nút "Bản offline" trước.'); return; }
+  if (!confirm('Khôi phục bản lưu này vào slot của nó? Save hiện tại trong slot sẽ bị ghi đè.')) return;
+  var raw = await exec(pageReadKey, bkKey);
+  if (!raw) { alert('Không đọc được bản lưu.'); return; }
+  var idx = bkKey.indexOf('jxidle_3') === 0 ? 2 : bkKey.indexOf('jxidle_2') === 0 ? 1 : 0;
+  var ok = await exec(pageWriteSave, SLOT_KEYS[idx], raw, idx);
+  if (!ok) { alert('Ghi thất bại.'); return; }
+  try { var bp = parseSaveText(raw).pay; pending = { slot: idx, name: bp.name, lvl: bp.lvl, netOwner: bp.netOwner, stage: 'written', ts: Date.now() }; lsSet('vls_pending', pending); pendingReported = ''; } catch (e) {}
+  log('Khôi phục bản lưu ' + bkKey + ' -> slot ' + (idx + 1));
+  wv.reload();
+}
+function renderHome() {
+  var sEl = $('home-session'), box = $('home-slots');
+  if (!sEl || !box) return;
+  if (!pageState) { sEl.textContent = 'Đang đọc trạng thái game...'; box.innerHTML = ''; return; }
+  var sess = pageState.session;
+  sEl.innerHTML = (pageState.offline ? 'Chế độ: <b>Bản offline</b> (nạp save)' : 'Chế độ: <b>Trang chính</b> (chơi / thao tác trong game)') +
+    '<br>Tài khoản: ' + (sess ? '<b>' + sess.name + '</b> (...' + sess.id.slice(-6) + ')' : 'chưa đăng nhập') +
+    (pending ? '<br><span style="color:#ffd54f">Kiểm chứng lần nạp gần nhất: ' + pending.name + ' — ' + pending.stage + '</span>' : '');
+  box.innerHTML = pageState.slots.map(function (s, i) {
+    var cur = i === pageState.slotIdx;
+    if (!s) return '<div class="slot-card"><b>Slot ' + (i + 1) + '</b> — trống' + (cur ? ' · <span style="color:#9ccc65">đang chọn</span>' : '') + '</div>';
+    if (s.broken) return '<div class="slot-card"><b>Slot ' + (i + 1) + '</b> — save không đọc được</div>';
+    return '<div class="slot-card"><b>' + s.name + '</b> — cấp ' + s.lvl + (cur ? ' · <span style="color:#9ccc65">đang chọn</span>' : '') +
+      '<br><span style="color:#8b94a7">Rương Ngựa: ' + (s.rngua == null ? '?' : s.rngua) + ' · chủ ...' + String(s.netOwner || '?').slice(-6) + '</span></div>';
+  }).join('');
+}
+document.querySelectorAll('[data-goto]').forEach(function (b) {
+  b.onclick = function () { showTab(b.getAttribute('data-goto')); };
+});
 
 // ---------- Tab Kiểm tra ----------
 $('diag-run').onclick = async function () {
@@ -709,12 +814,13 @@ $('log-clear').onclick = function () { lsSet('vls_log', []); renderLog(); };
 var activeTab = 'edit';
 function showTab(name) {
   activeTab = name;
-  ['edit', 'chest', 'knb', 'slots', 'check', 'log'].forEach(function (t) {
+  ['home', 'edit', 'chest', 'knb', 'slots', 'check', 'log', 'help'].forEach(function (t) {
     $('tab-' + t).style.display = t === name ? 'block' : 'none';
   });
   document.querySelectorAll('#tabs button').forEach(function (b) {
     b.className = b.getAttribute('data-tab') === name ? 'on' : '';
   });
+  if (name === 'home') renderHome();
   if (name === 'knb') renderKnbInfo();
   if (name === 'slots') renderSlots();
   if (name === 'chest') renderChestInfo();
@@ -734,4 +840,5 @@ setInterval(function () { if (document.hasFocus()) refreshState(); }, 6000);
 renderLog();
 loadBase('tpl-kunlun');
 refreshState();
+showTab('home');
 console.log('[VL Save Studio Desktop] sẵn sàng');
