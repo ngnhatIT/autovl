@@ -195,6 +195,47 @@ function pageChestClick() {
   return 0;
 }
 
+async function pageCompat() {
+  var out = { ver: null, caches: [], exp: null };
+  try {
+    if (window.caches) {
+      var ks = await caches.keys();
+      out.caches = ks;
+      ks.forEach(function (k) { var m = /v(\d{2,5})/.exec(k); if (m) { var v = parseInt(m[1], 10); if (!out.ver || v > out.ver) out.ver = v; } });
+    }
+  } catch (e) {}
+  if (!out.ver) {
+    try {
+      Array.prototype.forEach.call(document.querySelectorAll('script[src]'), function (s) {
+        var mm = /[?&]v=(\d{2,5})/.exec(s.getAttribute('src') || '');
+        if (mm) { var v2 = parseInt(mm[1], 10); if (!out.ver || v2 > out.ver) out.ver = v2; }
+      });
+    } catch (e) {}
+  }
+  try {
+    var txt = await (await fetch(location.origin + '/data.js?vlss=' + Date.now(), { cache: 'no-store' })).text();
+    var mx = /exp:\[([0-9eE.,\s]+)\]/.exec(txt);
+    if (mx) out.exp = mx[1].split(',').map(function (x) { return Number(x.trim()); }).filter(function (n) { return !isNaN(n); });
+  } catch (e) {}
+  return JSON.stringify(out);
+}
+async function pageClearGameCache() {
+  var n = { sw: 0, cache: 0 };
+  try {
+    if (navigator.serviceWorker) {
+      var regs = await navigator.serviceWorker.getRegistrations();
+      for (var i = 0; i < regs.length; i++) { try { if (await regs[i].unregister()) n.sw++; } catch (e) {} }
+    }
+  } catch (e) {}
+  try {
+    if (window.caches) {
+      var ks = await caches.keys();
+      for (var j = 0; j < ks.length; j++) { try { if (await caches.delete(ks[j])) n.cache++; } catch (e) {} }
+    }
+  } catch (e) {}
+  return JSON.stringify(n);
+}
+
 // ---------- Shell ----------
 var wv = document.getElementById('wv');
 function exec(fn) {
@@ -240,6 +281,7 @@ async function refreshState() {
     if (activeTab === 'home') renderHome();
     if (activeTab === 'auto') { renderChestInfo(); renderKnbInfo(); }
     verifyPending();
+    if (!compatAutoDone && pageState) { compatAutoDone = true; runCompat(); }
   } finally { refreshing = false; }
 }
 function renderSession() {
@@ -631,6 +673,105 @@ document.querySelectorAll('[data-goto]').forEach(function (b) {
   b.onclick = function () { showTab(b.getAttribute('data-goto')); };
 });
 
+// ---------- Tương thích với game hiện tại + Công cụ ----------
+var compatState = null;
+var compatRunning = false;
+var compatAutoDone = false;
+function renderCompat() {
+  var el = $('compat');
+  if (!el) return;
+  if (!compatState) { el.innerHTML = '<b>Tương thích với game:</b> <span style="color:#8b94a7">chưa kiểm tra — bấm "Kiểm tra tương thích" ở mục Công cụ bên dưới.</span>'; return; }
+  var color = compatState.level === 'fail' ? '#ef9a9a' : compatState.level === 'warn' ? '#ffd54f' : '#9ccc65';
+  var head = compatState.level === 'fail' ? 'KHÔNG KHỚP — KHÔNG NÊN NẠP LÚC NÀY' : compatState.level === 'warn' ? 'Có điểm cần chú ý' : 'Khớp tốt';
+  el.innerHTML = '<b style="color:' + color + '">Tương thích với game: ' + head + '</b>' +
+    (compatState.ver ? ' · phiên bản game: <b>v' + compatState.ver + '</b>' : '') +
+    '<br><span style="color:#8b94a7">' + compatState.lines.map(function (l) { return (l.ok === true ? '● OK&nbsp;&nbsp;' : l.ok === false ? '● LỖI&nbsp;&nbsp;' : '● --&nbsp;&nbsp;') + l.text; }).join('<br>') + '</span>' +
+    '<br><span style="color:#5d6677">Kiểm tra lúc ' + compatState.when + '</span>';
+}
+async function runCompat() {
+  if (compatRunning) return;
+  compatRunning = true;
+  var lines = [], level = 'ok', ver = null;
+  try {
+    var pc = {};
+    try { pc = JSON.parse((await exec(pageCompat)) || '{}'); } catch (e) {}
+    ver = pc.ver || null;
+    var checked = false;
+    if (pageState) {
+      for (var i = 0; i < 3 && !checked; i++) {
+        var raw = await exec(pageReadKey, SLOT_KEYS[i]);
+        if (!raw) continue;
+        checked = true;
+        try {
+          var p2 = JSON.parse(raw);
+          var e2 = typeof p2.data === 'string' ? JSON.parse(p2.data) : p2;
+          if (e2.f !== 2) { lines.push({ ok: false, text: 'Save ở slot ' + (i + 1) + ' có định dạng lạ (f=' + e2.f + ', tool chỉ hiểu f=2)' }); level = 'fail'; }
+          else if (gameHash(e2.d) === e2.h) lines.push({ ok: true, text: 'Hàm băm + định dạng save khớp save thật ở slot ' + (i + 1) });
+          else { lines.push({ ok: false, text: 'Hàm băm KHÔNG khớp save thật ở slot ' + (i + 1) + ' — game có thể đã đổi salt hoặc định dạng save' }); level = 'fail'; }
+        } catch (e) { lines.push({ ok: false, text: 'Save ở slot ' + (i + 1) + ' không đọc được: ' + e.message }); level = 'fail'; }
+      }
+    }
+    if (!checked) lines.push({ ok: null, text: 'Chưa có save nào trong máy để kiểm chứng hàm băm' });
+    if (pc.exp && pc.exp.length) {
+      var same = pc.exp.length === EXP_TABLE.length && pc.exp.every(function (v, ix) { return v === EXP_TABLE[ix]; });
+      if (same) lines.push({ ok: true, text: 'Bảng EXP khớp game hiện tại (200 cấp)' });
+      else if (pc.exp.length === 200 && pc.exp[0] === 100 && pc.exp.every(function (v, ix) { return v > 0 && (ix === 0 || v >= pc.exp[ix - 1]); })) {
+        EXP_TABLE = pc.exp;
+        lines.push({ ok: null, text: 'Bảng EXP của game ĐÃ ĐỔI — tool đã tự dùng bảng mới cho phiên làm việc này' });
+        if (level === 'ok') level = 'warn';
+      } else lines.push({ ok: null, text: 'Đọc được bảng EXP lạ từ game — giữ nguyên bảng EXP cũ của tool cho chắc' });
+    } else lines.push({ ok: null, text: 'Không đọc được bảng EXP từ game (bỏ qua mục này)' });
+    if (ver) {
+      var prev = lsGet('vls_game_ver', 0);
+      if (prev && prev !== ver) lines.push({ ok: null, text: 'Game vừa cập nhật: v' + prev + ' → v' + ver });
+      lsSet('vls_game_ver', ver);
+    } else lines.push({ ok: null, text: 'Không xác định được phiên bản game (không thấy cache của game)' });
+  } catch (e) {
+    lines.push({ ok: false, text: 'Lỗi khi kiểm tra: ' + (e.message || e) });
+    if (level === 'ok') level = 'warn';
+  }
+  compatState = { level: level, ver: ver, lines: lines, when: new Date().toLocaleString() };
+  compatRunning = false;
+  renderCompat();
+  log('Kiểm tra tương thích: ' + level.toUpperCase() + (ver ? ' (game v' + ver + ')' : ''));
+}
+$('compat-run').onclick = function () { runCompat(); };
+$('clear-cache').onclick = async function () {
+  if (!confirm('Xóa cache của game (service worker + bộ nhớ đệm) để ép tải bản game mới nhất?\nSave trong máy và đăng nhập KHÔNG bị đụng vào.')) return;
+  try {
+    var r = JSON.parse((await exec(pageClearGameCache)) || '{}');
+    log('Đã xóa cache game: ' + (r.sw || 0) + ' service worker, ' + (r.cache || 0) + ' mục cache');
+    status('Đã xóa cache game — đang tải lại khung game để nhận bản mới nhất...');
+  } catch (e) { status('Xóa cache lỗi: ' + (e.message || e)); return; }
+  compatAutoDone = false;
+  wv.reload();
+};
+$('export-log').onclick = function () {
+  var L = [];
+  L.push('VL Save Studio Desktop v1.5.0 — xuất lúc ' + new Date().toLocaleString());
+  if (pageState) {
+    L.push('Trang: ' + (pageState.offline ? 'OFFLINE (nạp save)' : 'URL CHÍNH') + ' — ' + pageState.href);
+    L.push('Phiên: ' + (pageState.session ? 'đã đăng nhập ...' + pageState.session.id.slice(-6) + ' (ID từ ' + pageState.session.src + ')' : 'chưa đăng nhập'));
+    L.push('Slot đang chọn: ' + (pageState.slotIdx + 1));
+    pageState.slots.forEach(function (s, i) { L.push('Slot ' + (i + 1) + ': ' + (!s ? 'trống' : s.broken ? 'save không đọc được' : s.name + ' cấp ' + s.lvl + ', chủ ...' + String(s.netOwner || '?').slice(-6))); });
+  } else L.push('Chưa đọc được trạng thái game.');
+  if (compatState) {
+    L.push('Tương thích: ' + compatState.level.toUpperCase() + (compatState.ver ? ' (game v' + compatState.ver + ')' : '') + ' — kiểm tra lúc ' + compatState.when);
+    compatState.lines.forEach(function (l) { L.push('  ' + (l.ok === true ? 'OK   ' : l.ok === false ? 'LỖI  ' : '--   ') + l.text); });
+  }
+  if (pending) L.push('Kiểm chứng sau nạp đang chờ: ' + pending.name + ' cấp ' + pending.lvl + ' — giai đoạn ' + pending.stage);
+  L.push('');
+  L.push('--- NHẬT KÝ THAO TÁC ---');
+  var arr = lsGet('vls_log', []);
+  L.push(arr.length ? arr.slice().reverse().join('\n') : '(trống)');
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([L.join('\n')], { type: 'text/plain;charset=utf-8' }));
+  a.download = 'vl-studio-nhat-ky.txt';
+  a.click();
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+  log('Đã xuất nhật ký ra file vl-studio-nhat-ky.txt');
+};
+
 // ---------- Tab Tự động: Mở rương (logic v4: đếm bằng save thật) ----------
 var chest = { chay: false, mo: 0 };
 function renderChestInfo() {
@@ -770,6 +911,7 @@ wv.addEventListener('did-navigate', function (e) { $('url').textContent = e.url;
 setInterval(refreshState, 6000);
 
 // ---------- Boot ----------
+renderCompat();
 loadBase('tpl-kunlun');
 refreshState();
 showTab('home');

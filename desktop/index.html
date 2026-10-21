@@ -80,7 +80,7 @@
       <div class="p-head">
         <div class="p-logo">VL</div>
         <div>
-          <div class="p-title">VL SAVE STUDIO<span class="p-ver">v1.4.0</span></div>
+          <div class="p-title">VL SAVE STUDIO<span class="p-ver">v1.5.0</span></div>
           <div class="p-sub">Bản desktop — đăng nhập ở khung game bên trái, thao tác save ở panel này. Không cần F12, không extension.</div>
         </div>
       </div>
@@ -92,6 +92,7 @@
 
       <div id="tab-home">
         <div id="home-session" class="card">Đang đọc trạng thái game...</div>
+        <div id="compat" class="card">Đang kiểm tra tương thích với game...</div>
         <div id="home-slots"></div>
         <div class="quick">
           <button class="mini" data-goto="edit">Nạp save</button>
@@ -114,6 +115,15 @@
           <p>Nếu ID tài khoản trong save khác tài khoản đang đăng nhập, game sẽ gạt save ngay khi vào bản chính. Tool chặn trước để bạn khỏi mất công — hãy để tool tự lấy ID acc trong form cho khớp, đừng tích ô nạp bất chấp trừ khi bạn hiểu rõ mình đang làm gì.</p>
           <h3>Nguyên tắc an toàn</h3>
           <p>Tool chạy hoàn toàn trên máy của bạn và thao tác qua giao diện thật của game. Các loại tiền do máy chủ quản lý (như Điểm Phúc Duyên) không sửa bằng file được — nạp vào cũng bị máy chủ ghi đè khi đồng bộ.</p>
+        </div>
+        <div class="card">
+          <div style="font-weight:700;margin-bottom:6px">Công cụ</div>
+          <div class="row">
+            <button id="compat-run" class="sec">Kiểm tra tương thích</button>
+            <button id="clear-cache" class="sec">Xóa cache game</button>
+            <button id="export-log" class="sec">Xuất nhật ký</button>
+          </div>
+          <div class="desc" style="margin-top:6px">Xóa cache chỉ đụng bộ nhớ đệm của game để ép tải bản game mới nhất — save trong máy và đăng nhập giữ nguyên. Xuất nhật ký tạo file .txt gồm trạng thái + lịch sử thao tác, gửi file đó khi cần soi lỗi từ xa.</div>
         </div>
         <div class="p-foot">Mọi thao tác đều được kiểm chứng bằng save thật sau khi thực hiện.</div>
       </div>
@@ -169,7 +179,7 @@
       </div>
 
       <div id="toast"></div>
-      <div class="p-foot">VL Save Studio Desktop v1.4.0 — chạy hoàn toàn trên máy bạn</div>
+      <div class="p-foot">VL Save Studio Desktop v1.5.0 — chạy hoàn toàn trên máy bạn</div>
     </div>
   </div>
 </div>
