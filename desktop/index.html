@@ -57,7 +57,6 @@
   .slot-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; margin-bottom: 7px; }
   .quick { display: flex; gap: 6px; margin-top: 8px; }
   .quick button { flex: 1; }
-  #log { white-space: pre-wrap; font-size: 12px; color: #c6cdd9; }
   .hint { color: var(--muted); font-size: 11px; }
   .help h3 { margin: 12px 0 4px; font-size: 13px; color: var(--gold); }
   .help p, .help li { color: #c6cdd9; font-size: 12.5px; }
@@ -81,19 +80,14 @@
       <div class="p-head">
         <div class="p-logo">VL</div>
         <div>
-          <div class="p-title">VL SAVE STUDIO<span class="p-ver">v1.3.0</span></div>
+          <div class="p-title">VL SAVE STUDIO<span class="p-ver">v1.4.0</span></div>
           <div class="p-sub">Bản desktop — đăng nhập ở khung game bên trái, thao tác save ở panel này. Không cần F12, không extension.</div>
         </div>
       </div>
       <div class="tabs" id="tabs">
         <button data-tab="home" class="on">Tổng quan</button>
         <button data-tab="edit">Tạo/Sửa</button>
-        <button data-tab="chest">Mở rương</button>
-        <button data-tab="knb">Mua KNB</button>
-        <button data-tab="slots">Slots</button>
-        <button data-tab="check">Kiểm tra</button>
-        <button data-tab="log">Nhật ký</button>
-        <button data-tab="help">Trợ giúp</button>
+        <button data-tab="auto">Tự động</button>
       </div>
 
       <div id="tab-home">
@@ -101,9 +95,25 @@
         <div id="home-slots"></div>
         <div class="quick">
           <button class="mini" data-goto="edit">Nạp save</button>
-          <button class="mini" data-goto="chest">Mở rương</button>
-          <button class="mini" data-goto="knb">Mua KNB</button>
-          <button class="mini" data-goto="slots">Bản lưu</button>
+          <button class="mini" data-goto="auto">Tự động (rương / KNB)</button>
+        </div>
+        <div class="card" style="margin-top:10px">
+          <div style="font-weight:700;margin-bottom:4px">Bản lưu có tên (tối đa 5 bản/slot)</div>
+          <div class="desc">Chụp lại save của một slot để dành — khôi phục được về đúng slot đó bất cứ lúc nào. Tool cũng tự tạo một bản lưu ngay trước mỗi lần nạp ghi đè, chung vào danh sách này.</div>
+          <div id="backups" style="margin-top:6px"></div>
+        </div>
+        <div class="card help">
+          <h3 style="margin-top:2px">Nạp save trong 4 bước</h3>
+          <ol>
+            <li>Đăng nhập đúng tài khoản ở khung game bên trái.</li>
+            <li>Bấm <b>Bản offline (nạp save)</b> trên thanh công cụ trên cùng.</li>
+            <li>Sang tab <b>Tạo/Sửa</b>: chọn nền, chỉnh số liệu, bấm <b>NẠP LUÔN</b> và xác nhận bảng xem trước.</li>
+            <li>Bấm <b>Trang chính</b> và chờ dòng "Kiểm chứng HOÀN TẤT" — nghĩa là save đã qua được vòng kiểm tra của game.</li>
+          </ol>
+          <h3>Vì sao tool chặn nạp?</h3>
+          <p>Nếu ID tài khoản trong save khác tài khoản đang đăng nhập, game sẽ gạt save ngay khi vào bản chính. Tool chặn trước để bạn khỏi mất công — hãy để tool tự lấy ID acc trong form cho khớp, đừng tích ô nạp bất chấp trừ khi bạn hiểu rõ mình đang làm gì.</p>
+          <h3>Nguyên tắc an toàn</h3>
+          <p>Tool chạy hoàn toàn trên máy của bạn và thao tác qua giao diện thật của game. Các loại tiền do máy chủ quản lý (như Điểm Phúc Duyên) không sửa bằng file được — nạp vào cũng bị máy chủ ghi đè khi đồng bộ.</p>
         </div>
         <div class="p-foot">Mọi thao tác đều được kiểm chứng bằng save thật sau khi thực hiện.</div>
       </div>
@@ -135,7 +145,8 @@
         <div id="status"></div>
       </div>
 
-      <div id="tab-chest" style="display:none">
+      <div id="tab-auto" style="display:none">
+        <div style="font-weight:700;margin:2px 0 6px">Mở rương ngựa tự động</div>
         <div class="desc">Tự bấm nút "Dùng ×10" trong popup Rương Ngựa (Hành trang) ở khung game bên trái. Đếm bằng save thật. Chạy ở <b>Trang chính</b>, mở sẵn popup trước khi bấm Bắt đầu.</div>
         <div id="chest-info" class="box"></div>
         <label>Số rương muốn mở:</label>
@@ -145,9 +156,7 @@
           <button id="chest-stop" class="sec" style="background:#8e2828">Dừng</button>
         </div>
         <div id="chest-status" style="color:#ffd54f;white-space:pre-wrap;margin-top:8px"></div>
-      </div>
-
-      <div id="tab-knb" style="display:none">
+        <div style="font-weight:700;margin:16px 0 6px">Mua KNB tự động</div>
         <div class="desc">Tự bấm nút ×100 trong Kỳ Trân Các (đổi ngân lượng lấy Kim Nguyên Bảo). Đếm bằng KNB thật trong save — bấm hụt là tool biết ngay. Mở sẵn <b>Kỳ Trân Các, tab Tiện ích</b> ở khung game trước khi chạy. Giới hạn của game: 10.000 KNB/ngày/mỗi tài khoản.</div>
         <div id="knb-info" class="box"></div>
         <label>Số lần bấm ×100:</label>
@@ -159,47 +168,8 @@
         <div id="knb-status" style="color:#ffd54f;white-space:pre-wrap;margin-top:8px"></div>
       </div>
 
-      <div id="tab-slots" style="display:none">
-        <div id="slots"></div>
-        <button id="slots-refresh" class="sec">Làm mới</button>
-        <div class="card" style="margin-top:10px">
-          <div style="font-weight:700;margin-bottom:4px">Bản lưu có tên (tối đa 5 bản/slot)</div>
-          <div class="desc">Chụp lại save của một slot để dành — khôi phục được về đúng slot đó bất cứ lúc nào. Khác với bản backup tự động khi nạp (chỉ giữ 1 bản gần nhất).</div>
-          <div id="backups" style="margin-top:6px"></div>
-        </div>
-      </div>
-
-      <div id="tab-check" style="display:none">
-        <div class="desc">Kiểm tra tận gốc: đang đăng nhập acc nào, các slot chứa gì và thuộc về ai, ghi save có bị chặn không.</div>
-        <button id="diag-run" class="act" style="margin-top:8px">Chạy kiểm tra</button>
-        <div id="diag-out" class="box"></div>
-      </div>
-
-      <div id="tab-log" style="display:none">
-        <div id="log"></div>
-        <button id="log-clear" class="sec" style="margin-top:6px">Xóa nhật ký</button>
-      </div>
-
-      <div id="tab-help" style="display:none" class="help">
-        <h3>Nạp save trong 4 bước</h3>
-        <ol>
-          <li>Đăng nhập đúng tài khoản ở khung game bên trái.</li>
-          <li>Bấm <b>Bản offline (nạp save)</b> trên thanh công cụ trên cùng.</li>
-          <li>Sang tab <b>Tạo/Sửa</b>: chọn nền, chỉnh số liệu, bấm <b>NẠP LUÔN</b> và xác nhận bảng xem trước.</li>
-          <li>Bấm <b>Trang chính</b> và chờ dòng "Kiểm chứng HOÀN TẤT" — nghĩa là save đã qua được vòng kiểm tra của game.</li>
-        </ol>
-        <h3>Vì sao tool chặn nạp?</h3>
-        <p>Nếu ID tài khoản trong save khác tài khoản đang đăng nhập, game sẽ gạt save ngay khi vào bản chính. Tool chặn trước để bạn khỏi mất công — hãy bấm nút "Tự lấy ID acc" trong form cho khớp, đừng tích ô nạp bất chấp trừ khi bạn hiểu rõ mình đang làm gì.</p>
-        <h3>Tự động hoá</h3>
-        <p>Tab <b>Mở rương</b> và <b>Mua KNB</b> bấm thay bạn qua các nút thật của game và đếm kết quả bằng save thật sau mỗi cú bấm — số không nhúc nhích là tool dừng và báo lý do, không bấm mù.</p>
-        <h3>Bản lưu có tên</h3>
-        <p>Tab <b>Slots</b> → "Tạo bản lưu" để chụp lại trạng thái hiện tại của một slot (tối đa 5 bản/slot). Trước mỗi lần thử nghiệm save lạ, tạo một bản lưu để luôn có đường quay lại.</p>
-        <h3>Nguyên tắc an toàn</h3>
-        <p>Tool chạy hoàn toàn trên máy của bạn và thao tác qua giao diện thật của game. Các loại tiền do máy chủ quản lý (như Điểm Phúc Duyên) không sửa bằng file được — nạp vào cũng bị máy chủ ghi đè khi đồng bộ.</p>
-      </div>
-
       <div id="toast"></div>
-      <div class="p-foot">VL Save Studio Desktop v1.3.0 — chạy hoàn toàn trên máy bạn</div>
+      <div class="p-foot">VL Save Studio Desktop v1.4.0 — chạy hoàn toàn trên máy bạn</div>
     </div>
   </div>
 </div>

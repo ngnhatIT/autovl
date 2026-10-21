@@ -1,6 +1,6 @@
 {
   "name": "vl-studio-desktop",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "VL Save Studio Desktop — tạo/sửa/nạp save Võ Lâm Idle với trình duyệt game tích hợp",
   "main": "main.js",
   "private": true,
@@ -12,13 +12,30 @@
   "build": {
     "appId": "com.vlstudio.desktop",
     "productName": "VL Save Studio",
-    "directories": { "output": "release" },
-    "files": ["main.js", "index.html", "app.js", "templates.js", "resources/**"],
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "index.html",
+      "app.js",
+      "templates.js",
+      "resources/**"
+    ],
     "win": {
       "icon": "resources/icon.ico",
-      "target": [{ "target": "portable", "arch": ["x64"] }]
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
     },
-    "portable": { "artifactName": "VL-Save-Studio-${version}.exe" }
+    "portable": {
+      "artifactName": "VL-Save-Studio-${version}.exe"
+    }
   },
   "devDependencies": {
     "electron": "^34.0.0",

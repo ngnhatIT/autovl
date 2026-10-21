@@ -7,8 +7,8 @@ App desktop (Electron) gói trọn VL Save Studio Pro v3.0: **trình duyệt gam
 1. Mở app. Khung bên trái là trang game — **đăng nhập tài khoản của bạn ở đó** (app dùng profile riêng, sạch, không extension nào khác; đăng nhập được giữ lại cho lần mở sau).
 2. Panel bên phải luôn hiện acc đang đăng nhập (đọc từ token phiên, không tin `jxidle_lastuser`).
 3. Nạp save: bấm **"Bản offline (nạp save)"** trên thanh công cụ → chọn nền/template → sửa số liệu → **NẠP LUÔN**. Tool có chốt chặn cứng nếu ID khác acc đang đăng nhập, hiện bảng xem trước cũ → mới trước khi ghi, và **tự kiểm chứng sau khi nạp** (kiểm chứng nốt khi bạn bấm "Trang chính" để game đẩy lên cloud).
-4. Mở rương: ở **Trang chính**, mở Hành trang → bấm vào Rương Ngựa (thấy nút "Dùng ×10") → sang tab **Mở rương** → Bắt đầu mở. Tool đếm bằng save thật, bấm hụt là biết ngay. Test số nhỏ (50) trước.
-5. Tab **Kiểm tra**: chẩn đoán phiên đăng nhập, chủ từng slot, thử ghi save. Tab **Slots**: xem/khôi phục backup. Tab **Nhật ký**: lịch sử thao tác.
+4. Mở rương / mua KNB: ở **Trang chính**, mở sẵn popup tương ứng trong game → sang tab **Tự động** → Bắt đầu. Tool đếm bằng save thật, bấm hụt là biết ngay. Test số nhỏ (50) trước.
+5. Tab **Tổng quan**: xem 3 slot, xuất file .jxsave từng slot, và quản lý **bản lưu có tên** (tối đa 5 bản/slot, khôi phục về đúng slot). Tool tự tạo một bản lưu trước mỗi lần nạp ghi đè — chung một danh sách, không còn backup rời kiểu cũ.
 
 ## Chạy từ mã nguồn (máy dev)
 

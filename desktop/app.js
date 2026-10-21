@@ -82,18 +82,17 @@ function pageReadState() {
     return null;
   }
   var sess = scan(sessionStorage);
-  if (!sess) { var lu = localStorage.getItem('jxidle_lastuser'); if (lu) sess = { id: lu, src: 'jxidle_lastuser' }; }
   if (!sess) sess = scan(localStorage);
+  if (!sess) { var lu = localStorage.getItem('jxidle_lastuser'); if (lu) sess = { id: lu, src: 'jxidle_lastuser (ID cũ — chỉ tham khảo)' }; }
   var keys = ['jxidle', 'jxidle_2', 'jxidle_3'];
   var slotIdx = parseInt(localStorage.getItem('jxidle_slot') || '0', 10);
   if (isNaN(slotIdx) || slotIdx < 0 || slotIdx > 2) slotIdx = 0;
   var slots = keys.map(function (k) {
     var raw = localStorage.getItem(k);
-    var hasBak = !!localStorage.getItem(k + '_bak');
     if (!raw) return null;
     var p = parseD(raw);
-    return p ? { name: p.name, lvl: p.lvl, netOwner: p.netOwner, rngua: (p.mats && p.mats.misc) ? p.mats.misc.rngua : null, hasBak: hasBak }
-             : { broken: true, hasBak: hasBak };
+    return p ? { name: p.name, lvl: p.lvl, netOwner: p.netOwner, rngua: (p.mats && p.mats.misc) ? p.mats.misc.rngua : null }
+             : { broken: true };
   });
   return {
     href: location.href,
@@ -109,7 +108,14 @@ function pageReadKey(key) { return localStorage.getItem(key); }
 function pageWriteSave(key, envStr, slotIdx) {
   window.__vlAllowSave = true;
   var old = localStorage.getItem(key);
-  if (old) localStorage.setItem(key + '_bak', old);
+  if (old) {
+    var bts = Date.now(); while (localStorage.getItem(key + '_bak_' + bts)) bts++;
+    try { localStorage.setItem(key + '_bak_' + bts, old); } catch (e) {}
+    var mine = [];
+    for (var bi = 0; bi < localStorage.length; bi++) { var bk = localStorage.key(bi); if (bk && bk.indexOf(key + '_bak_') === 0) mine.push(bk); }
+    mine.sort();
+    while (mine.length > 5) { localStorage.removeItem(mine.shift()); }
+  }
   localStorage.setItem(key, envStr);
   localStorage.setItem('jxidle_slot', String(slotIdx));
   if (localStorage.getItem(key) !== envStr) return false;
@@ -119,24 +125,6 @@ function pageWriteSave(key, envStr, slotIdx) {
     return orig.call(this, k, v);
   };
   return true;
-}
-function pageProbe() {
-  var keys = ['jxidle', 'jxidle_2', 'jxidle_3'];
-  for (var i = 0; i < keys.length; i++) {
-    var k = keys[i];
-    if (!localStorage.getItem(k)) {
-      var probe = '{"f":2,"d":"{}","h":"probe"}';
-      try {
-        localStorage.setItem(k, probe);
-        var back = localStorage.getItem(k);
-        localStorage.removeItem(k);
-        return { ok: back === probe, method: 'slot trống ' + k };
-      } catch (e) { return { ok: false, method: 'lỗi ghi ' + k + ': ' + e.message }; }
-    }
-  }
-  var cur = localStorage.getItem('jxidle');
-  try { localStorage.setItem('jxidle', cur); return { ok: localStorage.getItem('jxidle') === cur, method: 'cơ bản (ghi lại cùng giá trị)' }; }
-  catch (e) { return { ok: false, method: 'lỗi: ' + e.message }; }
 }
 function pageRngua() {
   try {
@@ -189,7 +177,8 @@ function pageBackupList() {
 function pageCreateBackup(slotKey) {
   var raw = localStorage.getItem(slotKey);
   if (!raw) return '';
-  var bk = slotKey + '_bak_' + Date.now();
+  var bts2 = Date.now(); while (localStorage.getItem(slotKey + '_bak_' + bts2)) bts2++;
+  var bk = slotKey + '_bak_' + bts2;
   try { localStorage.setItem(bk, raw); } catch (e) { return ''; }
   var mine = [];
   for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k && k.indexOf(slotKey + '_bak_') === 0) mine.push(k); }
@@ -221,7 +210,6 @@ function log(msg) {
   arr.unshift(new Date().toLocaleString() + ' — ' + msg);
   if (arr.length > 100) arr.length = 100;
   lsSet('vls_log', arr);
-  renderLog();
   toast(msg);
 }
 var toastTimer = null;
@@ -240,15 +228,19 @@ var basePay = null;
 var pending = lsGet('vls_pending', null);
 var pendingReported = '';
 
+var refreshing = false;
 async function refreshState() {
-  try { pageState = await exec(pageReadState); } catch (e) { pageState = null; }
-  renderSession();
-  refreshAutoId();
-  renderChecklist();
-  if (activeTab === 'home') renderHome();
-  if (activeTab === 'slots') renderSlots();
-  if (activeTab === 'chest') renderChestInfo();
-  verifyPending();
+  if (refreshing) return;
+  refreshing = true;
+  try {
+    try { pageState = await exec(pageReadState); } catch (e) { pageState = null; }
+    renderSession();
+    refreshAutoId();
+    renderChecklist();
+    if (activeTab === 'home') renderHome();
+    if (activeTab === 'auto') { renderChestInfo(); renderKnbInfo(); }
+    verifyPending();
+  } finally { refreshing = false; }
 }
 function renderSession() {
   var el = $('session');
@@ -256,6 +248,7 @@ function renderSession() {
   el.textContent = pageState.session
     ? 'phiên: ...' + pageState.session.id.slice(-6) + ' | ' + (pageState.offline ? 'OFFLINE' : 'URL CHÍNH')
     : 'phiên: chưa đăng nhập | ' + (pageState.offline ? 'OFFLINE' : 'URL CHÍNH');
+  if (pageState.session && String(pageState.session.src).indexOf('lastuser') >= 0) el.textContent += ' | LƯU Ý: ID lấy từ lastuser (có thể là ID cũ)';
   $('url').textContent = pageState.href;
   var cur = pageState.slots[pageState.slotIdx];
   if (cur && !cur.broken) el.textContent += ' | ' + cur.name + ' cấp ' + cur.lvl + (cur.rngua != null ? ' · ' + cur.rngua + ' rương' : '');
@@ -287,7 +280,7 @@ function verifyPending() {
     var found = !slot ? 'slot trống' : slot.broken ? 'save không đọc được' : '"' + slot.name + '" cấp ' + slot.lvl + ', chủ ...' + String(slot.netOwner || '?').slice(-6);
     var nm2 = pending.name, lv2 = pending.lvl;
     pending = null; lsSet('vls_pending', null); pendingReported = '';
-    status('Kiểm chứng THẤT BẠI: save vừa nạp ("' + nm2 + '" cấp ' + lv2 + ') không còn ở slot đích — hiện tại là ' + found + '. Mở tab Kiểm tra để soi nguyên nhân.');
+    status('Kiểm chứng THẤT BẠI: save vừa nạp ("' + nm2 + '" cấp ' + lv2 + ') không còn ở slot đích — hiện tại là ' + found + '. Kiểm tra lại acc đang đăng nhập và slot đích.');
     log('Kiểm chứng THẤT BẠI cho ' + nm2 + ' — hiện tại: ' + found);
     showTab('edit');
   }
@@ -470,7 +463,7 @@ async function doApply() {
   hideConfirm();
   var ok = false;
   try { ok = await exec(pageWriteSave, SLOT_KEYS[ts], r.envStr, ts); } catch (e) {}
-  if (!ok) { status('GHI THẤT BẠI: đọc lại không khớp — mở tab Kiểm tra để soi.'); return; }
+  if (!ok) { status('GHI THẤT BẠI: đọc lại không khớp — tải lại khung game rồi thử lại.'); return; }
   pending = { slot: ts, name: r.pay.name, lvl: r.pay.lvl, netOwner: r.pay.netOwner, stage: 'written', ts: Date.now() };
   lsSet('vls_pending', pending);
   pendingReported = '';
@@ -550,61 +543,6 @@ $('base-file').onchange = function () {
 };
 $('target').onchange = renderChecklist;
 
-// ---------- Tab Slots ----------
-function renderSlots() {
-  var box = $('slots');
-  if (!pageState) { box.innerHTML = '<div class="box">Chưa đọc được trạng thái game.</div>'; return; }
-  box.innerHTML = pageState.slots.map(function (s, i) {
-    var info = '(trống)';
-    if (s) info = s.broken ? '(save không đọc được)' : '<b>' + s.name + '</b> — cấp ' + s.lvl + ' | Rương Ngựa: ' + (s.rngua == null ? '?' : s.rngua) + ' | chủ ...' + String(s.netOwner || '?').slice(-6);
-    return '<div class="slot-card">Slot ' + (i + 1) + ' (' + SLOT_KEYS[i] + '): ' + info +
-      (s && !s.broken ? '<br><button class="mini" data-dl="' + i + '" style="margin-top:5px">Xuất file .jxsave</button><button class="mini" data-baknew="' + i + '" style="margin-top:5px;margin-left:5px">Tạo bản lưu</button>' : '') +
-      (s && s.hasBak ? '<button class="mini" data-restore="' + i + '" style="margin-top:5px;margin-left:5px;background:#6d4c00;color:#ffd54f">Khôi phục bản backup</button>' : '') + '</div>';
-  }).join('');
-  box.querySelectorAll('[data-dl]').forEach(function (b) {
-    b.onclick = async function () {
-      var i = parseInt(b.getAttribute('data-dl'), 10);
-      var raw = await exec(pageReadKey, SLOT_KEYS[i]);
-      if (!raw) return;
-      try {
-        var parsed = parseSaveText(raw);
-        var outer = JSON.stringify({ game: 'jxidle', v: 1, exported: Date.now(), fac: parsed.pay.fac, lvl: parsed.pay.lvl, data: raw });
-        var a2 = document.createElement('a');
-        a2.href = URL.createObjectURL(new Blob([outer], { type: 'application/octet-stream' }));
-        a2.download = 'jxidle_' + String(parsed.pay.name).replace(/[^a-zA-Z0-9_]/g, '_') + '_slot' + (i + 1) + '.jxsave';
-        a2.click();
-        setTimeout(function () { URL.revokeObjectURL(a2.href); }, 4000);
-        log('Xuất file slot ' + (i + 1) + ': ' + parsed.pay.name + ' cấp ' + parsed.pay.lvl);
-      } catch (e) { alert('Slot này không đọc được để xuất.'); }
-    };
-  });
-  box.querySelectorAll('[data-restore]').forEach(function (b) {
-    b.onclick = async function () {
-      var i = parseInt(b.getAttribute('data-restore'), 10);
-      if (!pageState || !pageState.offline) { alert('Khôi phục nên làm ở bản offline — bấm nút "Bản offline" trước.'); return; }
-      if (!confirm('Khôi phục backup vào Slot ' + (i + 1) + '?')) return;
-      var bak = await exec(pageReadKey, SLOT_KEYS[i] + '_bak');
-      if (!bak) return;
-      var ok = await exec(pageWriteSave, SLOT_KEYS[i], bak, i);
-      if (ok) {
-        try { var bp = parseSaveText(bak).pay; pending = { slot: i, name: bp.name, lvl: bp.lvl, netOwner: bp.netOwner, stage: 'written', ts: Date.now() }; lsSet('vls_pending', pending); } catch (e) {}
-        log('Khôi phục backup -> slot ' + (i + 1));
-        wv.reload();
-      } else alert('Ghi thất bại.');
-    };
-  });
-  box.querySelectorAll('[data-baknew]').forEach(function (b) {
-    b.onclick = async function () {
-      var i = parseInt(b.getAttribute('data-baknew'), 10);
-      var k = await exec(pageCreateBackup, SLOT_KEYS[i]);
-      if (k) { log('Tạo bản lưu ' + k); renderBackups(); }
-      else alert('Không tạo được bản lưu (slot trống?).');
-    };
-  });
-  renderBackups();
-}
-$('slots-refresh').onclick = refreshState;
-
 // ---------- Bản lưu có tên + Dashboard ----------
 function renderBackups() {
   var box = $('backups');
@@ -651,46 +589,49 @@ function renderHome() {
   if (!pageState) { sEl.textContent = 'Đang đọc trạng thái game...'; box.innerHTML = ''; return; }
   var sess = pageState.session;
   sEl.innerHTML = (pageState.offline ? 'Chế độ: <b>Bản offline</b> (nạp save)' : 'Chế độ: <b>Trang chính</b> (chơi / thao tác trong game)') +
-    '<br>Tài khoản: ' + (sess ? '<b>' + sess.name + '</b> (...' + sess.id.slice(-6) + ')' : 'chưa đăng nhập') +
+    '<br>Tài khoản: ' + (sess ? 'đã đăng nhập (...' + sess.id.slice(-6) + ')' + (String(sess.src).indexOf('lastuser') >= 0 ? ' <span style="color:#ffd54f">— ID lấy từ lastuser, có thể là ID cũ!</span>' : '') : 'chưa đăng nhập') +
     (pending ? '<br><span style="color:#ffd54f">Kiểm chứng lần nạp gần nhất: ' + pending.name + ' — ' + pending.stage + '</span>' : '');
   box.innerHTML = pageState.slots.map(function (s, i) {
     var cur = i === pageState.slotIdx;
     if (!s) return '<div class="slot-card"><b>Slot ' + (i + 1) + '</b> — trống' + (cur ? ' · <span style="color:#9ccc65">đang chọn</span>' : '') + '</div>';
     if (s.broken) return '<div class="slot-card"><b>Slot ' + (i + 1) + '</b> — save không đọc được</div>';
     return '<div class="slot-card"><b>' + s.name + '</b> — cấp ' + s.lvl + (cur ? ' · <span style="color:#9ccc65">đang chọn</span>' : '') +
-      '<br><span style="color:#8b94a7">Rương Ngựa: ' + (s.rngua == null ? '?' : s.rngua) + ' · chủ ...' + String(s.netOwner || '?').slice(-6) + '</span></div>';
+      '<br><span style="color:#8b94a7">Rương Ngựa: ' + (s.rngua == null ? '?' : s.rngua) + ' · chủ ...' + String(s.netOwner || '?').slice(-6) + '</span>' +
+      '<br><button class="mini" data-dl="' + i + '" style="margin-top:5px">Xuất file .jxsave</button>' +
+      '<button class="mini" data-baknew="' + i + '" style="margin-top:5px;margin-left:5px">Tạo bản lưu</button></div>';
   }).join('');
+  box.querySelectorAll('[data-dl]').forEach(function (b) {
+    b.onclick = async function () {
+      var i = parseInt(b.getAttribute('data-dl'), 10);
+      var raw = await exec(pageReadKey, SLOT_KEYS[i]);
+      if (!raw) return;
+      try {
+        var parsed = parseSaveText(raw);
+        var outer = JSON.stringify({ game: 'jxidle', v: 1, exported: Date.now(), fac: parsed.pay.fac, lvl: parsed.pay.lvl, data: raw });
+        var a2 = document.createElement('a');
+        a2.href = URL.createObjectURL(new Blob([outer], { type: 'application/octet-stream' }));
+        a2.download = 'jxidle_' + String(parsed.pay.name).replace(/[^a-zA-Z0-9_]/g, '_') + '_slot' + (i + 1) + '.jxsave';
+        a2.click();
+        setTimeout(function () { URL.revokeObjectURL(a2.href); }, 4000);
+        log('Xuất file slot ' + (i + 1) + ': ' + parsed.pay.name + ' cấp ' + parsed.pay.lvl);
+      } catch (e) { alert('Slot này không đọc được để xuất.'); }
+    };
+  });
+  box.querySelectorAll('[data-baknew]').forEach(function (b) {
+    b.onclick = async function () {
+      var i = parseInt(b.getAttribute('data-baknew'), 10);
+      var k = await exec(pageCreateBackup, SLOT_KEYS[i]);
+      if (k) { log('Tạo bản lưu ' + k); renderBackups(); }
+      else alert('Không tạo được bản lưu (slot trống?).');
+    };
+  });
+  renderBackups();
 }
 document.querySelectorAll('[data-goto]').forEach(function (b) {
   b.onclick = function () { showTab(b.getAttribute('data-goto')); };
 });
 
-// ---------- Tab Kiểm tra ----------
-$('diag-run').onclick = async function () {
-  var out = $('diag-out');
-  if (!pageState) { out.textContent = 'Chưa đọc được trạng thái game.'; return; }
-  var lines = [];
-  lines.push([null, 'Trang: ' + (pageState.offline ? 'bản OFFLINE' : 'URL CHÍNH') + ' — ' + pageState.href]);
-  lines.push([null, 'Môi trường: app desktop — không extension, không Save Guard, profile riêng sạch']);
-  if (pageState.session) lines.push([true, 'Acc đang đăng nhập: ...' + pageState.session.id.slice(-6) + ' (từ ' + pageState.session.src + ')']);
-  else lines.push([false, 'Acc đang đăng nhập: chưa đăng nhập']);
-  if (pageState.lastuser && pageState.session && pageState.lastuser !== pageState.session.id)
-    lines.push([false, 'jxidle_lastuser (...' + pageState.lastuser.slice(-6) + ') là ID CŨ còn sót — đừng tin nó']);
-  pageState.slots.forEach(function (s, i) {
-    if (!s) { lines.push([null, 'Slot ' + (i + 1) + ': trống']); return; }
-    if (s.broken) { lines.push([false, 'Slot ' + (i + 1) + ': save không đọc được']); return; }
-    var mine = pageState.session && String(s.netOwner) === pageState.session.id;
-    lines.push([pageState.session ? mine : null, 'Slot ' + (i + 1) + ': ' + s.name + ' cấp ' + s.lvl + ', chủ ...' + String(s.netOwner || '?').slice(-6) + (pageState.session ? (mine ? ' (khớp acc đang đăng nhập)' : ' (KHÔNG thuộc acc đang đăng nhập)') : '')]);
-  });
-  try {
-    var pr = await exec(pageProbe);
-    lines.push([pr.ok, 'Thử ghi save (' + pr.method + '): ' + (pr.ok ? 'GHI OK' : 'BỊ CHẶN')]);
-  } catch (e) { lines.push([false, 'Thử ghi save: lỗi ' + e.message]); }
-  out.textContent = lines.map(function (i) { return (i[0] === true ? '● OK  ' : i[0] === false ? '● LỖI  ' : '● --  ') + i[1]; }).join('\n');
-  log('Đã chạy kiểm tra hệ thống');
-};
-
-// ---------- Tab Mở rương (logic v4: đếm bằng save thật) ----------
+// ---------- Tab Tự động: Mở rương (logic v4: đếm bằng save thật) ----------
 var chest = { chay: false, mo: 0 };
 function renderChestInfo() {
   exec(pageRngua).then(function (n) {
@@ -746,7 +687,7 @@ $('chest-go').onclick = function () {
 };
 $('chest-stop').onclick = function () { if (chest.chay) chestStop('Đã dừng theo lệnh.'); };
 
-// ---------- Tab Mua KNB (tự bấm ×100 ở Kỳ Trân Các, đếm bằng KNB thật) ----------
+// ---------- Tab Tự động: Mua KNB (tự bấm ×100 ở Kỳ Trân Các, đếm bằng KNB thật) ----------
 var knbBuy = { chay: false, clicks: 0, gained: 0 };
 function renderKnbInfo() {
   exec(pageKnb).then(function (n) {
@@ -803,28 +744,20 @@ $('knb-go').onclick = function () {
 };
 $('knb-stop').onclick = function () { if (knbBuy.chay) knbStop('Đã dừng theo lệnh.'); };
 
-// ---------- Nhật ký ----------
-function renderLog() {
-  var arr = lsGet('vls_log', []);
-  $('log').textContent = arr.length ? arr.join('\n') : '(chưa có thao tác nào)';
-}
-$('log-clear').onclick = function () { lsSet('vls_log', []); renderLog(); };
+// ---------- Nhật ký: log() vẫn lưu ngầm vào localStorage 'vls_log' để debug khi cần (không còn tab riêng) ----------
 
 // ---------- Tabs + điều hướng ----------
-var activeTab = 'edit';
+var activeTab = 'home';
 function showTab(name) {
   activeTab = name;
-  ['home', 'edit', 'chest', 'knb', 'slots', 'check', 'log', 'help'].forEach(function (t) {
+  ['home', 'edit', 'auto'].forEach(function (t) {
     $('tab-' + t).style.display = t === name ? 'block' : 'none';
   });
   document.querySelectorAll('#tabs button').forEach(function (b) {
     b.className = b.getAttribute('data-tab') === name ? 'on' : '';
   });
   if (name === 'home') renderHome();
-  if (name === 'knb') renderKnbInfo();
-  if (name === 'slots') renderSlots();
-  if (name === 'chest') renderChestInfo();
-  if (name === 'log') renderLog();
+  if (name === 'auto') { renderChestInfo(); renderKnbInfo(); }
 }
 document.querySelectorAll('#tabs button').forEach(function (b) {
   b.onclick = function () { showTab(b.getAttribute('data-tab')); };
@@ -834,10 +767,9 @@ $('nav-off').onclick = function () { wv.loadURL('https://volamidle.pages.dev/?of
 $('nav-reload').onclick = function () { wv.reload(); };
 wv.addEventListener('did-finish-load', function () { refreshState(); });
 wv.addEventListener('did-navigate', function (e) { $('url').textContent = e.url; });
-setInterval(function () { if (document.hasFocus()) refreshState(); }, 6000);
+setInterval(refreshState, 6000);
 
 // ---------- Boot ----------
-renderLog();
 loadBase('tpl-kunlun');
 refreshState();
 showTab('home');
